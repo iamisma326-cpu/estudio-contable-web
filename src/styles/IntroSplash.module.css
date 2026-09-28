@@ -1,0 +1,159 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: linear-gradient(168deg, #070E22 0%, #0B1432 62%, #1C2B52 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+
+.overlay.leaving {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+/* ===== Logo: dibujo del trazo + balanceo que se asienta ===== */
+.logoWrap {
+  /* pivot cerca del fulcro para que el balanceo sea natural */
+  transform-origin: 50% 30%;
+  animation: sway 1.6s cubic-bezier(0.34, 1.4, 0.5, 1) 0.55s both;
+}
+
+.logo {
+  color: #ECEDEF;
+  --logo-accent: #D699AC;
+}
+
+/* Todo trazo del SVG se dibuja progresivamente */
+.logo path,
+.logo circle {
+  stroke-dasharray: 140;
+  stroke-dashoffset: 140;
+  animation: draw 0.9s ease forwards;
+}
+
+.logo path:nth-of-type(2) { animation-delay: 0.12s; }
+.logo path:nth-of-type(3) { animation-delay: 0.24s; }
+.logo path:nth-of-type(4) { animation-delay: 0.36s; }
+.logo path:nth-of-type(5) { animation-delay: 0.48s; }
+.logo path:nth-of-type(6) { animation-delay: 0.6s; }
+.logo path:nth-of-type(7) { animation-delay: 0.72s; }
+.logo circle:nth-of-type(2) { animation-delay: 0.85s; }
+
+/* Rellenos (rombo y puntos) aparecen al final del trazado */
+.logo [fill] {
+  opacity: 0;
+  animation: fillIn 0.4s ease 1.15s forwards;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fillIn {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sway {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(-7deg); }
+  55% { transform: rotate(5deg); }
+  80% { transform: rotate(-2.5deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* ===== Textos con entrada escalonada ===== */
+.name {
+  font-family: var(--font-title);
+  font-size: clamp(1.4rem, 3.4vw, 2rem);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.01em;
+  text-align: center;
+  opacity: 0;
+  animation: rise 0.7s ease 1.35s forwards;
+}
+
+.name em {
+  font-style: italic;
+  color: var(--color-accent-soft, #D699AC);
+}
+
+.divider {
+  width: 54px;
+  height: 2px;
+  background: var(--color-accent, #832C4A);
+  opacity: 0;
+  animation: grow 0.5s ease 1.55s forwards;
+}
+
+.tagline {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(236, 237, 239, 0.6);
+  margin: 0;
+  opacity: 0;
+  animation: rise 0.7s ease 1.7s forwards;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes grow {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+/* ===== Accesibilidad: sin animación si el usuario lo prefiere ===== */
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .logoWrap,
+  .name,
+  .divider,
+  .tagline {
+    animation: none !important;
+  }
+
+  .logo path,
+  .logo circle {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+    animation: none !important;
+  }
+
+  .logo [fill] {
+    opacity: 1;
+    animation: none !important;
+  }
+}

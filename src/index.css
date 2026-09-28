@@ -1,0 +1,204 @@
+/* ============================================================
+   SÁNCHEZ DELGADO & ASOCIADOS — Estudio Contable
+   Paleta corporativa: Azul noche #0B1432 · Borgoña #832C4A
+   Superficies: #ECEDEF · #FFFFFF
+   Tipografía: Libre Baskerville (títulos) + Source Sans 3 (cuerpo)
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Paleta corporativa — azul noche + borgoña */
+  --color-primary: #0B1432;          /* Azul noche — marca */
+  --color-primary-deep: #070E22;     /* Azul noche profundo — fondos oscuros */
+  --color-primary-light: #2E5486;    /* Azul medio — hover */
+  --color-accent: #832C4A;           /* Borgoña — acento corporativo */
+  --color-accent-soft: #D699AC;      /* Borgoña claro — detalles sobre oscuro */
+  --color-accent-bg: rgba(131, 44, 74, 0.1);
+  --color-bg-light: #ECEDEF;         /* Gris corporativo — secciones claras */
+  --color-bg-white: #FFFFFF;
+  --color-text: #1A2130;
+  --color-text-muted: rgba(26, 33, 48, 0.66);
+  --color-text-inverted: #ECEDEF;
+  --color-success: #2E7D5B;
+  --color-danger: #B23A48;
+
+  --font-title: 'Libre Baskerville', Georgia, serif;
+  --font-body: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+
+  --border-radius: 14px;
+  --border-radius-sm: 8px;
+  --box-shadow: 0 10px 30px -12px rgba(7, 14, 34, 0.14);
+  --box-shadow-hover: 0 22px 44px -18px rgba(7, 14, 34, 0.24);
+
+  --transition-speed: 0.3s;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background-color: var(--color-bg-white);
+  line-height: 1.65;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  color: var(--color-primary);
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: all var(--transition-speed) ease;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  transition: all var(--transition-speed) ease;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ============ Utilidades compartidas ============ */
+.section-padding {
+  padding: 96px 24px;
+}
+
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+/* Etiqueta pequeña dorada sobre los títulos de sección */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 14px;
+}
+
+.eyebrow::before {
+  content: '';
+  width: 28px;
+  height: 2px;
+  background: var(--color-accent);
+  display: inline-block;
+}
+
+.section-title {
+  font-size: clamp(1.7rem, 3.2vw, 2.4rem);
+  margin-bottom: 16px;
+}
+
+.section-subtitle {
+  color: var(--color-text-muted);
+  max-width: 640px;
+  font-size: 1.05rem;
+}
+
+/* Animaciones de entrada al hacer scroll (IntersectionObserver) */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Botones base */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border-radius: var(--border-radius-sm);
+  font-weight: 600;
+  font-size: 0.98rem;
+  letter-spacing: 0.01em;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #6A2239;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -10px rgba(131, 44, 74, 0.55);
+}
+
+.btn-outline {
+  border: 1.5px solid rgba(236, 237, 239, 0.5);
+  color: var(--color-text-inverted);
+}
+
+.btn-outline:hover {
+  border-color: var(--color-accent-soft);
+  color: var(--color-accent-soft);
+}
+
+.btn-outline-dark {
+  border: 1.5px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn-outline-dark:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* ====== Breakpoints ======
+   Desktop : default            > 1200px
+   Laptop  : max-width: 1200px
+   Tablet  : max-width: 1024px
+   Mobile  : max-width: 768px
+   Small   : max-width: 480px   */
+
+@media (max-width: 1024px) {
+  .section-padding {
+    padding: 76px 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .section-padding {
+    padding: 60px 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .section-padding {
+    padding: 48px 14px;
+  }
+}

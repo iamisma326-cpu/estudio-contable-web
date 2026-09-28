@@ -1,0 +1,274 @@
+/* ===== Hero ===== */
+.hero {
+  background:
+    radial-gradient(ellipse 55% 45% at 85% 10%, rgba(131, 44, 74, 0.15), transparent 60%),
+    linear-gradient(160deg, #070E22 0%, #0B1432 100%);
+  color: var(--color-text-inverted);
+  padding: 160px 24px 80px;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-accent-soft);
+  margin-bottom: 14px;
+}
+
+.title {
+  color: #fff;
+  font-size: clamp(2rem, 4.2vw, 3rem);
+  line-height: 1.22;
+  margin-bottom: 18px;
+  max-width: 780px;
+}
+
+.lead {
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: rgba(236, 237, 239, 0.8);
+  max-width: 640px;
+  margin: 0;
+}
+
+/* ===== Encabezados de sección ===== */
+.sectionHead {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 38px;
+}
+
+.sectionIcon {
+  color: var(--color-accent);
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.subtitle {
+  font-size: clamp(1.5rem, 2.8vw, 2rem);
+  margin-bottom: 8px;
+}
+
+.sectionLead {
+  color: var(--color-text-muted);
+  max-width: 620px;
+  font-size: 0.98rem;
+  margin: 0;
+}
+
+/* ===== Calendario de vencimientos ===== */
+.deadlines {
+  padding: 112px 24px;
+  background: var(--color-bg-light);
+}
+
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.deadline {
+  background: #fff;
+  border-radius: var(--border-radius-sm);
+  border-left: 3px solid var(--color-accent);
+  padding: 20px 22px;
+  box-shadow: var(--box-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.date {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.deadline h3 {
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.deadline p {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ===== Actualidad tributaria ===== */
+.articles {
+  padding: 112px 24px;
+  background: var(--color-bg-white);
+}
+
+.articlesGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+}
+
+.articleCard {
+  background: #fff;
+  border: 1px solid rgba(11, 20, 50, 0.12);
+  border-radius: var(--border-radius);
+  padding: 26px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease, border-color var(--transition-speed) ease;
+}
+
+.articleCard:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--box-shadow-hover);
+  border-color: rgba(131, 44, 74, 0.45);
+}
+
+.articleMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.articleDate {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.articleTag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  background: var(--color-accent-bg);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.articleCard h3 {
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
+.articleCard p {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ===== Glosario ===== */
+.glossary {
+  padding: 112px 24px;
+  background: var(--color-bg-light);
+}
+
+.searchInput {
+  width: 100%;
+  max-width: 460px;
+  padding: 14px 20px;
+  border-radius: var(--border-radius-sm);
+  border: 1.5px solid rgba(11, 20, 50, 0.18);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--color-text);
+  margin-bottom: 30px;
+  background: #fff;
+  outline: none;
+  transition: border-color var(--transition-speed) ease;
+}
+
+.searchInput:focus {
+  border-color: var(--color-accent);
+}
+
+.glossaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.termCard {
+  background: #fff;
+  border-radius: var(--border-radius-sm);
+  padding: 18px 22px;
+  border-left: 3px solid var(--color-primary);
+}
+
+.termCard dt {
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.termCard dd {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.noResults {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+  .hero {
+    padding: 148px 24px 68px;
+  }
+
+  .articlesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding: 130px 18px 56px;
+  }
+
+  .deadlines,
+  .articles,
+  .glossary {
+    padding: 72px 18px;
+  }
+
+  .timeline,
+  .glossaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionHead {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 560px) {
+  .articlesGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .articleCard {
+    padding: 22px 20px;
+  }
+
+  .deadline {
+    padding: 18px 16px;
+  }
+}

@@ -1,0 +1,160 @@
+.section {
+  background: var(--color-bg-white);
+  overflow: hidden;
+  padding: 112px 24px;
+}
+
+.header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 44px;
+}
+
+.header .eyebrow::after {
+  content: '';
+  width: 28px;
+  height: 2px;
+  background: var(--color-accent);
+  display: inline-block;
+}
+
+.carousel {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.arrow {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(11, 20, 50, 0.2);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  transition: all var(--transition-speed) ease;
+}
+
+.arrow:hover {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.viewport {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.track {
+  display: flex;
+  transition: transform 0.55s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.slide {
+  flex: 0 0 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px 24px 0;
+  margin: 0;
+}
+
+.quoteIcon {
+  color: var(--color-accent);
+  margin-bottom: 14px;
+}
+
+.stars {
+  display: flex;
+  gap: 4px;
+  color: var(--color-accent);
+  margin-bottom: 18px;
+}
+
+.quote {
+  font-family: var(--font-title);
+  font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+  font-style: italic;
+  line-height: 1.75;
+  color: var(--color-text);
+  max-width: 780px;
+  margin-bottom: 24px;
+}
+
+.name {
+  display: block;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+
+.role {
+  display: block;
+  font-size: 0.87rem;
+  color: var(--color-text-muted);
+  margin-top: 3px;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 34px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(11, 20, 50, 0.2);
+  transition: all var(--transition-speed) ease;
+  padding: 0;
+}
+
+.dotActive {
+  background: var(--color-accent);
+  width: 26px;
+  border-radius: 5px;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .section {
+    padding: 72px 18px;
+  }
+
+  .carousel {
+    gap: 0;
+  }
+
+  .arrow {
+    display: none;
+  }
+
+  .slide {
+    padding: 0 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .quote {
+    font-size: 1rem;
+    text-align: left;
+  }
+
+  .name {
+    font-size: 0.94rem;
+  }
+
+  .role {
+    font-size: 0.82rem;
+  }
+}

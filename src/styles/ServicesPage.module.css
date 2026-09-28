@@ -1,0 +1,228 @@
+/* ===== Hero ===== */
+.hero {
+  background:
+    radial-gradient(ellipse 55% 45% at 85% 10%, rgba(131, 44, 74, 0.15), transparent 60%),
+    linear-gradient(160deg, #070E22 0%, #0B1432 100%);
+  color: var(--color-text-inverted);
+  padding: 160px 24px 80px;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-accent-soft);
+  margin-bottom: 14px;
+}
+
+.title {
+  color: #fff;
+  font-size: clamp(2rem, 4.2vw, 3rem);
+  line-height: 1.22;
+  margin-bottom: 18px;
+  max-width: 800px;
+}
+
+.lead {
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: rgba(236, 237, 239, 0.8);
+  max-width: 680px;
+  margin: 0;
+}
+
+/* ===== Grid de servicios ===== */
+.list {
+  padding: 112px 24px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 28px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid rgba(11, 20, 50, 0.1);
+  border-radius: var(--border-radius);
+  padding: 32px 30px;
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--box-shadow-hover);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  background: var(--color-accent-bg);
+  padding: 5px 12px;
+  border-radius: 999px;
+}
+
+.price {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.cardTitle {
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+}
+
+.cardDesc {
+  font-size: 0.94rem;
+  line-height: 1.7;
+  color: var(--color-text-muted);
+  margin-bottom: 18px;
+}
+
+.items {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.items li {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.check {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--color-success);
+}
+
+.note {
+  margin-top: 36px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* ===== Comparativa de regímenes ===== */
+.comparison {
+  background: var(--color-bg-light);
+  padding: 112px 24px;
+}
+
+.subtitle {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  margin-bottom: 12px;
+}
+
+.comparisonLead {
+  color: var(--color-text-muted);
+  max-width: 640px;
+  margin-bottom: 36px;
+}
+
+/* Scroll horizontal solo en la tabla, no en la página */
+.tableWrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid rgba(11, 20, 50, 0.12);
+  background: #fff;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 820px;
+}
+
+.table th,
+.table td {
+  padding: 14px 18px;
+  text-align: left;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  border-bottom: 1px solid rgba(11, 20, 50, 0.08);
+}
+
+.table th {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.table td:first-child {
+  font-weight: 700;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: rgba(131, 44, 74, 0.06);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+  .hero {
+    padding: 148px 24px 68px;
+  }
+
+  .grid {
+    gap: 22px;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .list,
+  .comparison {
+    padding: 72px 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding: 130px 18px 56px;
+  }
+
+  .card {
+    padding: 26px 22px;
+  }
+
+  .table th,
+  .table td {
+    padding: 12px 14px;
+    font-size: 0.85rem;
+  }
+}
