@@ -1,6 +1,7 @@
 .section {
   background: var(--color-bg-light);
-  padding: 112px 24px;
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
 }
 
 .header {
@@ -19,10 +20,14 @@
   display: inline-block;
 }
 
+.stepsWrap {
+  position: relative;
+}
+
 .steps {
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
   gap: 28px;
   counter-reset: step;
 }
@@ -58,31 +63,30 @@
   margin: 0;
 }
 
-/* Conector punteado entre tarjetas (solo desktop) */
+/* Riel de la línea de tiempo: lo dibuja GSAP con scaleX ligado al scroll.
+   Sustituye al conector punteado que había entre tarjetas — dos recursos
+   para la misma idea. Sólo tiene sentido en la fila de escritorio. */
+.rail {
+  display: none;
+}
+
 @media (min-width: 1025px) {
-  .step:not(:last-child)::after {
-    content: '';
+  .rail {
+    display: block;
     position: absolute;
-    top: 50%;
-    right: -28px;
-    width: 28px;
+    top: -14px;
+    left: 0;
+    right: 0;
     height: 2px;
-    background: repeating-linear-gradient(90deg, var(--color-accent) 0 6px, transparent 6px 12px);
+    background: repeating-linear-gradient(90deg, var(--color-accent) 0 8px, transparent 8px 16px);
+    transform: scaleX(0);
+    transform-origin: left center;
+    will-change: transform;
   }
 }
 
 /* --- Responsive --- */
-@media (max-width: 1024px) {
-  .steps {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 768px) {
-  .section {
-    padding: 72px 18px;
-  }
-
   .steps {
     grid-template-columns: 1fr;
     gap: 18px;
@@ -100,5 +104,33 @@
 @media (max-width: 480px) {
   .step {
     padding: 20px 18px;
+  }
+}
+
+/* ===== Línea de tiempo vertical (móvil) =====
+   En una sola columna los pasos se leen como una lista, y una línea que los
+   une comunica el avance sin iconos adicionales. */
+@media (max-width: 768px) {
+  .step {
+    padding-left: 62px;
+  }
+
+  .step .num {
+    position: absolute;
+    left: 0;
+    top: 22px;
+    width: 46px;
+    text-align: center;
+    margin-bottom: 0;
+  }
+
+  .step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 22px;
+    top: 56px;
+    bottom: -18px;
+    width: 2px;
+    background: repeating-linear-gradient(180deg, var(--color-accent) 0 6px, transparent 6px 12px);
   }
 }

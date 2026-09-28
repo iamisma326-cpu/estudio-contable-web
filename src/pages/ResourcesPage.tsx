@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { IconCalendar, IconNews, IconSearchTerm } from '../components/icons/BrandIcons';
 import useSEO from '../hooks/useSEO';
-import useReveal from '../hooks/useReveal';
+import useRevealAnimations from '../hooks/useRevealAnimations';
 import ContactCta from '../components/ContactCta';
 import styles from '../styles/ResourcesPage.module.css';
 
@@ -55,7 +55,7 @@ const glossary = [
 ];
 
 export default function ResourcesPage() {
-  useReveal();
+  useRevealAnimations();
   const [query, setQuery] = useState('');
 
   const filtered = glossary.filter(
@@ -69,17 +69,18 @@ export default function ResourcesPage() {
     description:
       'Calendario de vencimientos SUNAT 2026, actualidad tributaria y glosario contable-tributario para empresas peruanas.',
     canonical: 'https://sanchezdelgado.pe/recursos',
+    breadcrumb: [{ name: 'Recursos', path: '/recursos' }],
   });
 
   return (
     <>
       <section className={styles.hero}>
         <div className="container">
-          <span className={`${styles.eyebrow} reveal`}>Recursos</span>
-          <h1 className={`${styles.title} reveal`}>
+          <span className={styles.eyebrow} data-reveal="up">Recursos</span>
+          <h1 className={styles.title} data-reveal="up" data-reveal-delay="0.08">
             Herramientas para entender tu contabilidad
           </h1>
-          <p className={`${styles.lead} reveal`}>
+          <p className={styles.lead} data-reveal="up" data-reveal-delay="0.16">
             Calendario de obligaciones, actualidad tributaria y un glosario en
             español sencillo. Todo gratuito, sin registro.
           </p>
@@ -89,7 +90,7 @@ export default function ResourcesPage() {
       {/* Calendario */}
       <section className={styles.deadlines}>
         <div className="container">
-          <div className={`${styles.sectionHead} reveal`}>
+          <div className={styles.sectionHead} data-reveal="up">
             <IconCalendar size={26} className={styles.sectionIcon} />
             <div>
               <h2 className={styles.subtitle}>Vencimientos clave del año</h2>
@@ -100,9 +101,9 @@ export default function ResourcesPage() {
             </div>
           </div>
 
-          <div className={styles.timeline}>
+          <div className={styles.timeline} data-reveal-group="up">
             {deadlines.map((d) => (
-              <article key={d.title} className={`${styles.deadline} reveal`}>
+              <article key={d.title} className={styles.deadline} data-reveal>
                 <span className={styles.date}>{d.date}</span>
                 <div>
                   <h3>{d.title}</h3>
@@ -117,7 +118,7 @@ export default function ResourcesPage() {
       {/* Actualidad */}
       <section className={styles.articles}>
         <div className="container">
-          <div className={`${styles.sectionHead} reveal`}>
+          <div className={styles.sectionHead} data-reveal="up">
             <IconNews size={26} className={styles.sectionIcon} />
             <div>
               <h2 className={styles.subtitle}>Actualidad tributaria</h2>
@@ -128,9 +129,9 @@ export default function ResourcesPage() {
             </div>
           </div>
 
-          <div className={styles.articlesGrid}>
+          <div className={styles.articlesGrid} data-reveal-group="clip">
             {articles.map((a) => (
-              <article key={a.title} className={`${styles.articleCard} reveal`}>
+              <article key={a.title} className={styles.articleCard} data-reveal>
                 <div className={styles.articleMeta}>
                   <span className={styles.articleDate}>{a.date}</span>
                   <span className={styles.articleTag}>{a.tag}</span>
@@ -146,7 +147,7 @@ export default function ResourcesPage() {
       {/* Glosario */}
       <section className={styles.glossary}>
         <div className="container">
-          <div className={`${styles.sectionHead} reveal`}>
+          <div className={styles.sectionHead} data-reveal="up">
             <IconSearchTerm size={26} className={styles.sectionIcon} />
             <div>
               <h2 className={styles.subtitle}>Glosario contable</h2>
@@ -167,7 +168,7 @@ export default function ResourcesPage() {
 
           <dl className={styles.glossaryGrid}>
             {filtered.map((g) => (
-              <div key={g.term} className={`${styles.termCard} reveal visible`}>
+              <div key={g.term} className={styles.termCard} data-reveal="fade">
                 <dt>{g.term}</dt>
                 <dd>{g.def}</dd>
               </div>

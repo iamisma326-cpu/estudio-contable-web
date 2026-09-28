@@ -1,11 +1,12 @@
 .section {
   background: linear-gradient(135deg, #6A2239 0%, #832C4A 100%);
-  padding: 74px 24px;
+  padding-block: var(--space-section-sm);
+  padding-inline: var(--gutter);
 }
 
 .inner {
-  max-width: 1180px;
-  margin: 0 auto;
+  max-width: var(--container);
+  margin-inline: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -39,6 +40,7 @@
   background: #FFFFFF;
   color: var(--color-accent);
   font-weight: 700;
+  min-height: 50px;
   padding: 15px 28px;
   border-radius: var(--border-radius-sm);
   transition: all var(--transition-speed) ease;
@@ -56,6 +58,7 @@
   border: 1.5px solid rgba(255, 255, 255, 0.55);
   color: #FFFFFF;
   font-weight: 700;
+  min-height: 50px;
   padding: 15px 28px;
   border-radius: var(--border-radius-sm);
   transition: all var(--transition-speed) ease;
@@ -66,10 +69,6 @@
 }
 
 @media (max-width: 768px) {
-  .section {
-    padding: 60px 18px;
-  }
-
   .actions {
     width: 100%;
   }

@@ -1,6 +1,6 @@
 import { IconTarget, IconEye, IconHandshake, IconShieldCheck, IconBulb, IconBadgeCheck } from '../components/icons/BrandIcons';
 import useSEO from '../hooks/useSEO';
-import useReveal from '../hooks/useReveal';
+import useRevealAnimations from '../hooks/useRevealAnimations';
 import ContactCta from '../components/ContactCta';
 import styles from '../styles/AboutPage.module.css';
 
@@ -30,44 +30,45 @@ const team = [
 ];
 
 export default function AboutPage() {
-  useReveal();
+  useRevealAnimations();
 
   useSEO({
     title: 'Nosotros | Sánchez Delgado & Asociados Estudio Contable',
     description:
       'Conoce a Sánchez Delgado & Asociados: estudio contable en Lima dirigido por el CPC Miguel Ángel Sánchez Delgado, con más de 15 años asesorando MYPEs y PYMES peruanas.',
     canonical: 'https://sanchezdelgado.pe/nosotros',
+    breadcrumb: [{ name: 'Nosotros', path: '/nosotros' }],
   });
 
   return (
     <>
       <section className={styles.hero}>
         <div className="container">
-          <span className={`${styles.eyebrow} reveal`}>Nosotros</span>
-          <h1 className={`${styles.title} reveal`}>
+          <span className={styles.eyebrow} data-reveal="up">Nosotros</span>
+          <h1 className={styles.title} data-reveal="up" data-reveal-delay="0.08">
             Contadores que entienden<br />de negocios, no solo de números
           </h1>
-          <p className={`${styles.lead} reveal`}>
+          <p className={styles.lead} data-reveal="up" data-reveal-delay="0.16">
             Fundado en 2010 por el CPC Miguel Ángel Sánchez Delgado con una convicción
             simple: las empresas peruanas merecen asesoría contable de nivel
             corporativo, explicada en lenguaje claro y a un precio justo. Hoy somos el
             estudio de confianza de más de 320 empresas en todo el país.
           </p>
 
-          <div className={styles.milestones}>
-            <div className={`${styles.milestone} reveal`}>
+          <div className={styles.milestones} data-reveal-group="up">
+            <div className={styles.milestone} data-reveal>
               <strong>2010</strong>
               <span>Fundación en Lima con 3 clientes</span>
             </div>
-            <div className={`${styles.milestone} reveal`}>
+            <div className={styles.milestone} data-reveal>
               <strong>2014</strong>
               <span>Primeras 100 empresas bajo administración</span>
             </div>
-            <div className={`${styles.milestone} reveal`}>
+            <div className={styles.milestone} data-reveal>
               <strong>2019</strong>
               <span>Área de auditoría certificada NIA</span>
             </div>
-            <div className={`${styles.milestone} reveal`}>
+            <div className={styles.milestone} data-reveal>
               <strong>2024</strong>
               <span>+320 clientes y 14 profesionales</span>
             </div>
@@ -77,8 +78,8 @@ export default function AboutPage() {
 
       <section className={styles.mission}>
         <div className="container">
-          <div className={styles.missionGrid}>
-            <div className={`${styles.missionCard} reveal`}>
+          <div className={styles.missionGrid} data-reveal-group="up">
+            <div className={styles.missionCard} data-reveal>
               <IconTarget size={26} className={styles.missionIcon} />
               <h2>Misión</h2>
               <p>
@@ -86,7 +87,7 @@ export default function AboutPage() {
                 ordenada, impuestos pagados a tiempo y números que explican el negocio.
               </p>
             </div>
-            <div className={`${styles.missionCard} reveal`}>
+            <div className={styles.missionCard} data-reveal>
               <IconEye size={26} className={styles.missionIcon} />
               <h2>Visión</h2>
               <p>
@@ -94,7 +95,7 @@ export default function AboutPage() {
                 crecer con formalidad, en Lima y en todo el Perú.
               </p>
             </div>
-            <div className={`${styles.missionCard} reveal`}>
+            <div className={styles.missionCard} data-reveal>
               <IconHandshake size={26} className={styles.missionIcon} />
               <h2>Compromiso</h2>
               <p>
@@ -108,11 +109,11 @@ export default function AboutPage() {
 
       <section className={styles.values}>
         <div className="container">
-          <span className={`${styles.eyebrow} reveal`}>Nuestros valores</span>
-          <h2 className={`${styles.subtitle} reveal`}>Lo que nos define frente al cliente</h2>
-          <div className={styles.valuesGrid}>
+          <span className={styles.eyebrow} data-reveal="up">Nuestros valores</span>
+          <h2 className={styles.subtitle} data-reveal="up">Lo que nos define frente al cliente</h2>
+          <div className={styles.valuesGrid} data-reveal-group="clip">
             {values.map((v) => (
-              <article key={v.title} className={`${styles.valueCard} reveal`}>
+              <article key={v.title} className={styles.valueCard} data-reveal>
                 <span className={styles.valueIcon}><v.icon size={24} /></span>
                 <h3>{v.title}</h3>
                 <p>{v.desc}</p>
@@ -124,11 +125,11 @@ export default function AboutPage() {
 
       <section className={styles.team}>
         <div className="container">
-          <span className={`${styles.eyebrow} reveal`}>Equipo</span>
-          <h2 className={`${styles.subtitle} reveal`}>Personas detrás de tus números</h2>
-          <div className={styles.teamGrid}>
+          <span className={styles.eyebrow} data-reveal="up">Equipo</span>
+          <h2 className={styles.subtitle} data-reveal="up">Personas detrás de tus números</h2>
+          <div className={styles.teamGrid} data-reveal-group="up">
             {team.map((m) => (
-              <div key={m.name} className={`${styles.teamCard} reveal`}>
+              <div key={m.name} className={styles.teamCard} data-reveal>
                 <span className={styles.avatar} aria-hidden="true">{m.initials}</span>
                 <strong>{m.name}</strong>
                 <span className={styles.role}>{m.role}</span>

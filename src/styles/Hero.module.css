@@ -1,15 +1,32 @@
 .hero {
-  background:
-    radial-gradient(ellipse 55% 42% at 50% -8%, rgba(131, 44, 74, 0.16), transparent 62%),
-    linear-gradient(168deg, #070E22 0%, #0B1432 62%, #1C2B52 100%);
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(168deg, #070E22 0%, #0B1432 62%, #1C2B52 100%);
   color: var(--color-text-inverted);
-  padding: 188px 24px 104px;
+  /* El padding superior depende del token del header: si cambia la
+     altura del header, el Hero sigue despejándolo sin tocar números. */
+  padding-block: clamp(44px, 7vw, 76px) var(--space-section);
+  padding-top: calc(var(--header-offset) + clamp(40px, 6vw, 72px));
+  padding-inline: var(--gutter);
   text-align: center;
+  overflow: hidden;
+}
+
+/* Halo del fondo: capa propia para poder desplazarla con GSAP sin
+   recalcular el gradiente en cada frame. */
+.heroGlow {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 120%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 55% 42% at 50% -8%, rgba(131, 44, 74, 0.16), transparent 62%);
 }
 
 .inner {
+  position: relative;
   max-width: 820px;
-  margin: 0 auto;
+  margin-inline: auto;
 }
 
 .eyebrow {
@@ -24,10 +41,11 @@
   padding: 8px 18px;
   border-radius: 999px;
   margin-bottom: 28px;
+  text-wrap: balance;
 }
 
 .title {
-  font-size: clamp(2.2rem, 4.6vw, 3.3rem);
+  font-size: clamp(2.1rem, 4.6vw, 3.3rem);
   line-height: 1.16;
   color: #fff;
   margin-bottom: 20px;
@@ -36,6 +54,13 @@
 .title em {
   font-style: italic;
   color: var(--color-accent-soft);
+}
+
+/* Las palabras que SplitText genera necesitan su propio recorte para que
+   el "yPercent: 105" de la entrada no se vea deslizar desde fuera. */
+.title :global(.word) {
+  display: inline-block;
+  will-change: transform;
 }
 
 .subtitle {
@@ -78,6 +103,8 @@
   font-weight: 700;
   font-size: 1.05rem;
   color: var(--color-accent-soft);
+  /* Las cifras deben poder leerse aunque la fuente aún no cargue */
+  font-variant-numeric: tabular-nums;
 }
 
 .stat dd {
@@ -88,23 +115,18 @@
 
 .statDivider {
   width: 1px;
+  align-self: stretch;
   background: rgba(236, 237, 239, 0.16);
 }
 
 /* --- Responsive --- */
-@media (max-width: 1024px) {
-  .hero {
-    padding: 160px 24px 88px;
-  }
-}
-
 @media (max-width: 768px) {
-  .hero {
-    padding: 136px 18px 68px;
-  }
-
   .subtitle {
     margin-bottom: 30px;
+  }
+
+  .ctaRow {
+    margin-bottom: 44px;
   }
 
   .ctaRow .btn {
@@ -120,17 +142,17 @@
   .statDivider {
     width: 44px;
     height: 1px;
-    margin: 0 auto;
+    align-self: center;
   }
 }
 
 @media (max-width: 480px) {
-  .hero {
-    padding: 124px 14px 56px;
-  }
-
   .eyebrow {
     font-size: 0.66rem;
     padding: 6px 12px;
+  }
+
+  .stats {
+    gap: 14px;
   }
 }

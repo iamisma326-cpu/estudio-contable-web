@@ -1,16 +1,13 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import useReveal from '../hooks/useReveal';
 import { IconWhatsApp } from './icons/BrandIcons';
 import { whatsappLink, WHATSAPP_GREETING } from '../config/contact';
 import styles from '../styles/ContactCta.module.css';
 
 export default function ContactCta() {
-  useReveal();
-
   return (
     <section className={styles.section}>
-      <div className={`${styles.inner} reveal`}>
+      <div className={styles.inner} data-reveal="clip">
         <div>
           <h2 className={styles.title}>¿Listo para tener tus números en orden?</h2>
           <p className={styles.subtitle}>

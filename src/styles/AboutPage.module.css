@@ -4,7 +4,10 @@
     radial-gradient(ellipse 55% 45% at 88% 8%, rgba(131, 44, 74, 0.15), transparent 60%),
     linear-gradient(160deg, #070E22 0%, #0B1432 100%);
   color: var(--color-text-inverted);
-  padding: 160px 24px 88px;
+  overflow: hidden;
+  padding-block: var(--space-section);
+  padding-top: calc(var(--header-offset) + clamp(40px, 6vw, 72px));
+  padding-inline: var(--gutter);
 }
 
 .eyebrow {
@@ -33,9 +36,9 @@
 
 /* ===== Hitos ===== */
 .milestones {
-  margin-top: 52px;
+  margin-top: var(--space-block);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   gap: 16px;
 }
 
@@ -63,12 +66,13 @@
 
 /* ===== Misión / Visión / Compromiso ===== */
 .mission {
-  padding: 112px 24px;
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
 }
 
 .missionGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 26px;
 }
 
@@ -99,7 +103,8 @@
 /* ===== Valores ===== */
 .values {
   background: var(--color-bg-white);
-  padding: 112px 24px;
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
 }
 
 .subtitle {
@@ -109,7 +114,7 @@
 
 .valuesGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 26px;
 }
 
@@ -146,12 +151,13 @@
 /* ===== Equipo ===== */
 .team {
   background: var(--color-bg-light);
-  padding: 112px 24px;
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
 }
 
 .teamGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 22px;
 }
 
@@ -194,48 +200,7 @@
 }
 
 /* ===== Responsive ===== */
-@media (max-width: 1024px) {
-  .hero {
-    padding: 148px 24px 72px;
-  }
-
-  .milestones {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .teamGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 900px) {
-  .missionGrid,
-  .valuesGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 768px) {
-  .hero {
-    padding: 130px 18px 60px;
-  }
-
-  .mission,
-  .values,
-  .team {
-    padding: 72px 18px;
-  }
-}
-
-@media (max-width: 560px) {
-  .milestones {
-    grid-template-columns: 1fr;
-  }
-
-  .teamGrid {
-    grid-template-columns: 1fr;
-  }
-
   .teamCard {
     flex-direction: row;
     text-align: left;
@@ -253,5 +218,12 @@
   .missionCard,
   .valueCard {
     padding: 26px 22px;
+  }
+}
+
+/* Dos columnas ya no caben con un avatar y un nombre largo */
+@media (max-width: 480px) {
+  .teamCard {
+    padding: 22px 18px;
   }
 }

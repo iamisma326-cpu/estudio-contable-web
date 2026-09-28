@@ -4,7 +4,8 @@ import { CheckCircle2 } from 'lucide-react';
 import { IconPin, IconPhone, IconMail, IconClock, IconWhatsApp, IconSend } from '../components/icons/BrandIcons';
 import { WHATSAPP_DISPLAY, whatsappLink, buildFormMessage, WHATSAPP_GREETING } from '../config/contact';
 import useSEO from '../hooks/useSEO';
-import useReveal from '../hooks/useReveal';
+import useRevealAnimations from '../hooks/useRevealAnimations';
+import useSuccessMoment from '../hooks/useSuccessMoment';
 import styles from '../styles/ContactPage.module.css';
 
 const serviceOptions = [
@@ -18,8 +19,9 @@ const serviceOptions = [
 ];
 
 export default function ContactPage() {
-  useReveal();
+  useRevealAnimations();
   const [sent, setSent] = useState(false);
+  const successRef = useSuccessMoment({ active: sent });
   const [waUrl, setWaUrl] = useState('');
   const [service, setService] = useState(serviceOptions[0]);
 
@@ -28,6 +30,7 @@ export default function ContactPage() {
     description:
       'Agenda tu diagnóstico contable gratuito en San Isidro, Lima. Escríbenos por WhatsApp, teléfono o formulario y te respondemos en menos de 24 horas.',
     canonical: 'https://sanchezdelgado.pe/contacto',
+    breadcrumb: [{ name: 'Contacto', path: '/contacto' }],
   });
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -57,29 +60,29 @@ export default function ContactPage() {
       <div className={styles.inner}>
         {/* Columna información */}
         <div className={styles.info}>
-          <span className={`${styles.eyebrow} reveal`}>Contacto</span>
-          <h1 className={`${styles.title} reveal`}>Hablemos de tu empresa</h1>
-          <p className={`${styles.lead} reveal`}>
+          <span className={styles.eyebrow} data-reveal="up">Contacto</span>
+          <h1 className={styles.title} data-reveal="up" data-reveal-delay="0.08">Hablemos de tu empresa</h1>
+          <p className={styles.lead} data-reveal="up" data-reveal-delay="0.16">
             Cuéntanos tu situación y agendamos una reunión de diagnóstico de 45 minutos,
             presencial u online, sin costo ni compromiso.
           </p>
 
-          <ul className={styles.infoList}>
-            <li className="reveal">
+          <ul className={styles.infoList} data-reveal-group="left">
+            <li data-reveal>
               <span className={styles.infoIcon}><IconPin size={19} /></span>
               <div>
                 <strong>Oficina</strong>
                 <p>Av. Canaval y Moreyra 480, Piso 12, Of. 1203 — San Isidro, Lima</p>
               </div>
             </li>
-            <li className="reveal">
+            <li data-reveal>
               <span className={styles.infoIcon}><IconPhone size={19} /></span>
               <div>
                 <strong>Teléfono</strong>
                 <p><a href="tel:+5114802600">(01) 480-2600</a></p>
               </div>
             </li>
-            <li className="reveal">
+            <li data-reveal>
               <span className={styles.infoIcon}><IconWhatsApp size={19} /></span>
               <div>
                 <strong>WhatsApp</strong>
@@ -94,14 +97,14 @@ export default function ContactPage() {
                 </p>
               </div>
             </li>
-            <li className="reveal">
+            <li data-reveal>
               <span className={styles.infoIcon}><IconMail size={19} /></span>
               <div>
                 <strong>Correo</strong>
                 <p><a href="mailto:contacto@sanchezdelgado.pe">contacto@sanchezdelgado.pe</a></p>
               </div>
             </li>
-            <li className="reveal">
+            <li data-reveal>
               <span className={styles.infoIcon}><IconClock size={19} /></span>
               <div>
                 <strong>Horario</strong>
@@ -110,7 +113,7 @@ export default function ContactPage() {
             </li>
           </ul>
 
-          <div className={`${styles.mapWrap} reveal`}>
+          <div className={styles.mapWrap} data-reveal="scale">
             <iframe
               title="Ubicación de la oficina en San Isidro, Lima"
               src="https://www.google.com/maps?q=Av.+Canaval+y+Moreyra+480,+San+Isidro,+Lima,+Peru&output=embed"
@@ -122,11 +125,13 @@ export default function ContactPage() {
         </div>
 
         {/* Columna formulario */}
-        <div className={`${styles.formCol} reveal`}>
+        <div className={styles.formCol} data-reveal="right">
           {sent ? (
-            <div className={styles.success}>
-              <CheckCircle2 size={52} className={styles.successIcon} />
-              <h2>¡Listo para enviar!</h2>
+            /* aria-live: el cambio de estado del formulario es el único
+               punto donde el usuario necesita que le avisen. */
+            <div className={styles.success} role="status" aria-live="polite" ref={successRef}>
+              <CheckCircle2 size={52} className={styles.successIcon} data-success="mark" />
+              <h2 data-success="line">¡Listo para enviar!</h2>
               <p>
                 Se abrió WhatsApp con tu mensaje ya escrito hacia nuestro número{' '}
                 <strong>{WHATSAPP_DISPLAY}</strong>. Solo presiona <strong>enviar</strong> en

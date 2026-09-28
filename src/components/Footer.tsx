@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Linkedin } from 'lucide-react';
+import { useGSAP, gsap } from '../lib/gsap';
 import LogoMark from './icons/LogoMark';
 import styles from '../styles/Footer.module.css';
 
@@ -12,18 +14,44 @@ const navLinks = [
 ];
 
 export default function Footer() {
+  const root = useRef<HTMLElement>(null);
+
+  /* Entrada por columnas al llegar al final de la página. */
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
+      mm.add('(prefers-reduced-motion: no-preference)', () => {
+        gsap.from('[data-reveal]', {
+          opacity: 0,
+          y: 22,
+          duration: 0.6,
+          stagger: 0.08,
+          ease: 'power3.out',
+          scrollTrigger: { trigger: root.current, start: 'top 92%', once: true },
+        });
+      });
+      return () => mm.revert();
+    },
+    { scope: root }
+  );
+
   return (
-    <footer className={styles.footer}>
+    <footer className={styles.footer} ref={root}>
       {/* Barra única: marca · navegación · redes */}
       <div className={styles.bar}>
-        <Link to="/" className={styles.brand} aria-label="Sánchez Delgado & Asociados — Inicio">
+        <Link
+          to="/"
+          className={styles.brand}
+          data-reveal
+          aria-label="Sánchez Delgado & Asociados — Inicio"
+        >
           <LogoMark size={32} className={styles.logoMark} />
           <span className={styles.name}>
             Sánchez Delgado <em>&amp;</em> Asociados
           </span>
         </Link>
 
-        <nav className={styles.nav} aria-label="Mapa del sitio">
+        <nav className={styles.nav} data-reveal aria-label="Mapa del sitio">
           {navLinks.map((l) => (
             <Link key={l.link} to={l.link} className={styles.navLink}>
               {l.label}
@@ -31,14 +59,32 @@ export default function Footer() {
           ))}
         </nav>
 
-        <div className={styles.social}>
-          <a href="https://facebook.com" target="_blank" rel="noreferrer" aria-label="Facebook" className={styles.socialBtn}>
+        <div className={styles.social} data-reveal>
+          <a
+            href="https://www.facebook.com/sanchezdelgadope"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Facebook"
+            className={styles.socialBtn}
+          >
             <Facebook size={15} />
           </a>
-          <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className={styles.socialBtn}>
+          <a
+            href="https://www.instagram.com/sanchezdelgadope"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Instagram"
+            className={styles.socialBtn}
+          >
             <Instagram size={15} />
           </a>
-          <a href="https://linkedin.com" target="_blank" rel="noreferrer" aria-label="LinkedIn" className={styles.socialBtn}>
+          <a
+            href="https://www.linkedin.com/company/sanchezdelgadope"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="LinkedIn"
+            className={styles.socialBtn}
+          >
             <Linkedin size={15} />
           </a>
         </div>

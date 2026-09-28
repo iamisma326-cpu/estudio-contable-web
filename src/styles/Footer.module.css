@@ -1,14 +1,16 @@
 .footer {
   background: var(--color-primary-deep);
   color: rgba(236, 237, 239, 0.82);
+  /* Empuja el pie al fondo cuando la página es más corta que la ventana */
   margin-top: auto;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* ===== Barra única: marca · nav · redes ===== */
 .bar {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 26px 24px;
+  max-width: var(--container-wide);
+  margin-inline: auto;
+  padding: 26px var(--gutter);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -21,6 +23,8 @@
   align-items: center;
   gap: 11px;
   flex-shrink: 0;
+  min-width: 0;
+  min-height: var(--tap-min);
 }
 
 .logoMark {
@@ -34,7 +38,7 @@
   font-weight: 700;
   font-size: 0.98rem;
   color: #fff;
-  white-space: nowrap;
+  text-wrap: balance;
 }
 
 .name em {
@@ -46,7 +50,7 @@
 .nav {
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 4px;
   flex-wrap: wrap;
   justify-content: center;
   flex: 1;
@@ -54,10 +58,13 @@
 }
 
 .navLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding-inline: 10px;
   font-size: 0.9rem;
   color: rgba(236, 237, 239, 0.75);
   transition: color var(--transition-speed) ease;
-  white-space: nowrap;
 }
 
 .navLink:hover {
@@ -72,15 +79,16 @@
 }
 
 .socialBtn {
-  width: 34px;
-  height: 34px;
+  width: var(--tap-min);
+  height: var(--tap-min);
   border-radius: 50%;
   border: 1px solid rgba(236, 237, 239, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
   color: rgba(236, 237, 239, 0.85);
-  transition: all var(--transition-speed) ease;
+  transition: background-color var(--transition-speed) ease, border-color var(--transition-speed) ease,
+    color var(--transition-speed) ease;
 }
 
 .socialBtn:hover {
@@ -91,9 +99,9 @@
 
 /* ===== Línea legal ===== */
 .bottom {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 16px 24px;
+  max-width: var(--container-wide);
+  margin-inline: auto;
+  padding: 16px var(--gutter);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -107,7 +115,14 @@
   margin: 0;
 }
 
+/* Los enlaces de esta línea SÍ exemptos del objetivo táctil: WCAG 2.5.8
+   excluye los enlaces dentro de una frase o un bloque de texto, y aquí son
+   texto en línea con el copyright. Se les da 32px para que sigan siendo
+   cómodo de pulsar sin descuadrar la línea. */
 .contact a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
   color: rgba(236, 237, 239, 0.72);
 }
 
@@ -115,24 +130,22 @@
   color: var(--color-accent-soft);
 }
 
-/* ===== Responsive ===== */
+/* ===== Responsive =====
+   Se conserva el control de dos filas de tablet, pero con los tokens de
+   gutter: antes cada breakpoint repetía su propio padding horizontal. */
 
 /* Laptop: la marca se abrevia visualmente reduciendo tipografía */
-@media (max-width: 1100px) {
+@media (max-width: 1280px) {
   .name {
-    font-size: 0.88rem;
-  }
-
-  .nav {
-    gap: 16px;
+    font-size: 0.9rem;
   }
 }
 
-/* Tablet: dos filas controladas — arriba marca+redes, abajo nav centrado */
-@media (max-width: 900px) {
+/* Tablet: arriba marca + redes, abajo la nav centrada */
+@media (max-width: 1024px) {
   .bar {
     flex-wrap: wrap;
-    row-gap: 18px;
+    row-gap: 10px;
     justify-content: center;
   }
 
@@ -151,28 +164,30 @@
   }
 }
 
-/* Móvil: todo centrado en columna, nav envuelto en filas limpias */
-@media (max-width: 600px) {
+/* Móvil: todo centrado en columna */
+@media (max-width: 768px) {
   .bar {
-    padding: 32px 18px 26px;
+    padding-block: 32px 26px;
   }
 
   .name {
-    font-size: 0.92rem;
-    white-space: normal;
     text-align: center;
   }
 
   .nav {
-    gap: 10px 18px;
-    max-width: 340px;
+    gap: 2px 8px;
   }
 
   .bottom {
     flex-direction: column;
     text-align: center;
-    gap: 6px;
-    padding: 16px 18px;
+    gap: 4px;
     font-size: 0.78rem;
+  }
+
+  /* En columna los enlaces seguidos se leen como un bloque de texto: 28px
+     bastan y no queda el texto despegado del copyright. */
+  .contact a {
+    min-height: 28px;
   }
 }

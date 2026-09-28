@@ -1,5 +1,10 @@
 import { useEffect } from 'react';
 
+interface Crumb {
+  name: string;
+  path: string;
+}
+
 interface SEOData {
   title: string;
   description: string;
@@ -8,11 +13,25 @@ interface SEOData {
   ogImage?: string;
   canonical?: string;
   keywords?: string;
+  /** Migas de pan; se traducen a un BreadcrumbList de schema.org. */
+  breadcrumb?: Crumb[];
 }
 
+const SITE = 'https://sanchezdelgado.pe';
+const BREADCRUMB_ID = 'seo-breadcrumb';
+
+/**
+ * SEO por ruta.
+ *
+ * Además de title/description/OG, inyecta el BreadcrumbList de cada
+ * subpágina. Se hace en runtime porque las rutas se renderizan en el
+ * cliente: el HTML estático sólo conoce la home.
+ */
 export default function useSEO(data: SEOData) {
+  const { breadcrumb, ...meta } = data;
+
   useEffect(() => {
-    document.title = data.title;
+    document.title = meta.title;
 
     const setMeta = (attr: string, attrValue: string, content: string) => {
       let el = document.querySelector(`meta[${attr}="${attrValue}"]`) as HTMLMetaElement | null;
@@ -24,29 +43,65 @@ export default function useSEO(data: SEOData) {
       el.setAttribute('content', content);
     };
 
-    setMeta('name', 'description', data.description);
+    setMeta('name', 'description', meta.description);
 
-    if (data.keywords) {
-      setMeta('name', 'keywords', data.keywords);
+    if (meta.keywords) {
+      setMeta('name', 'keywords', meta.keywords);
     }
 
-    setMeta('property', 'og:title', data.ogTitle || data.title);
-    setMeta('property', 'og:description', data.ogDescription || data.description);
-    if (data.ogImage) {
-      setMeta('property', 'og:image', data.ogImage);
+    setMeta('property', 'og:title', meta.ogTitle || meta.title);
+    setMeta('property', 'og:description', meta.ogDescription || meta.description);
+    if (meta.ogImage) {
+      setMeta('property', 'og:image', meta.ogImage);
     }
 
-    setMeta('name', 'twitter:title', data.ogTitle || data.title);
-    setMeta('name', 'twitter:description', data.ogDescription || data.description);
+    setMeta('name', 'twitter:title', meta.ogTitle || meta.title);
+    setMeta('name', 'twitter:description', meta.ogDescription || meta.description);
 
-    if (data.canonical) {
-      let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-      if (!link) {
-        link = document.createElement('link');
-        link.setAttribute('rel', 'canonical');
-        document.head.appendChild(link);
-      }
-      link.setAttribute('href', data.canonical);
+    const canonicalUrl = meta.canonical || SITE;
+    let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement('link');
+      link.setAttribute('rel', 'canonical');
+      document.head.appendChild(link);
     }
-  }, [data.title, data.description, data.ogTitle, data.ogDescription, data.ogImage, data.canonical, data.keywords]);
+    link.setAttribute('href', canonicalUrl);
+    setMeta('property', 'og:url', canonicalUrl);
+
+    // --- BreadcrumbList ---
+    const existing = document.getElementById(BREADCRUMB_ID);
+    if (!breadcrumb || breadcrumb.length === 0) {
+      existing?.remove();
+      return;
+    }
+
+    const items = [{ name: 'Inicio', path: '/' }, ...breadcrumb];
+    const jsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: items.map((c, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        name: c.name,
+        item: `${SITE}${c.path === '/' ? '' : c.path}`,
+      })),
+    };
+
+    const script = (existing as HTMLScriptElement | null) ?? document.createElement('script');
+    if (!existing) {
+      script.type = 'application/ld+json';
+      script.id = BREADCRUMB_ID;
+      document.head.appendChild(script);
+    }
+    script.textContent = JSON.stringify(jsonLd);
+  }, [
+    meta.title,
+    meta.description,
+    meta.ogTitle,
+    meta.ogDescription,
+    meta.ogImage,
+    meta.canonical,
+    meta.keywords,
+    breadcrumb,
+  ]);
 }

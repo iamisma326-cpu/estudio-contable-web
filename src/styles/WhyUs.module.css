@@ -1,15 +1,17 @@
 .section {
   background: linear-gradient(165deg, #070E22 0%, #0B1432 70%, #1C2B52 100%);
   color: var(--color-text-inverted);
-  padding: 112px 24px;
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
+  overflow: hidden; /* el parallax del aside no debe generar scroll lateral */
 }
 
 .inner {
-  max-width: 1180px;
-  margin: 0 auto;
+  max-width: var(--container);
+  margin-inline: auto;
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
-  gap: 70px;
+  gap: clamp(40px, 6vw, 70px);
   align-items: center;
 }
 
@@ -83,6 +85,19 @@
   gap: 18px;
 }
 
+/* Las tarjetas con parallax necesitan will-change propio: sin él, el
+   navegador las repinta en cada tick del scrub. */
+.asideCard,
+.asideCardGold {
+  will-change: transform;
+}
+
+/* La tercera capa se separa un poco más del borde para que el escalonado
+   de profundidades se lea sin ambigüedad. */
+.depthThird {
+  margin-top: 4px;
+}
+
 .asideCard,
 .asideCardGold {
   background: rgba(255, 255, 255, 0.96);
@@ -135,15 +150,11 @@
 @media (max-width: 1024px) {
   .inner {
     grid-template-columns: 1fr;
-    gap: 52px;
+    gap: var(--space-block);
   }
 }
 
 @media (max-width: 768px) {
-  .section {
-    padding: 72px 18px;
-  }
-
   .item {
     flex-direction: column;
     gap: 12px;
@@ -159,5 +170,10 @@
   .asideCard,
   .asideCardGold {
     padding: 22px 20px;
+  }
+
+  .itemIcon {
+    width: 40px;
+    height: 40px;
   }
 }

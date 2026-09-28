@@ -4,7 +4,9 @@
     radial-gradient(ellipse 55% 45% at 85% 10%, rgba(131, 44, 74, 0.15), transparent 60%),
     linear-gradient(160deg, #070E22 0%, #0B1432 100%);
   color: var(--color-text-inverted);
-  padding: 160px 24px 80px;
+  padding-block: var(--space-section);
+  padding-top: calc(var(--header-offset) + clamp(40px, 6vw, 72px));
+  padding-inline: var(--gutter);
 }
 
 .eyebrow {
@@ -35,12 +37,13 @@
 
 /* ===== Grid de servicios ===== */
 .list {
-  padding: 112px 24px;
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 28px;
 }
 
@@ -128,7 +131,8 @@
 /* ===== Comparativa de regímenes ===== */
 .comparison {
   background: var(--color-bg-light);
-  padding: 112px 24px;
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
 }
 
 .subtitle {
@@ -142,9 +146,13 @@
   margin-bottom: 36px;
 }
 
-/* Scroll horizontal solo en la tabla, no en la página */
+/* La tabla es el único elemento con scroll horizontal del sitio. Se
+   permite explícitamente con touch-action para que el arrastre vertical
+   siga funcionando y no se quede el dedo pegado a la tabla. */
 .tableWrap {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
   border-radius: var(--border-radius-sm);
   border: 1px solid rgba(11, 20, 50, 0.12);
@@ -190,30 +198,9 @@
 }
 
 /* ===== Responsive ===== */
-@media (max-width: 1024px) {
-  .hero {
-    padding: 148px 24px 68px;
-  }
-
-  .grid {
-    gap: 22px;
-  }
-}
-
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
-  .list,
-  .comparison {
-    padding: 72px 18px;
-  }
-}
-
 @media (max-width: 768px) {
-  .hero {
-    padding: 130px 18px 56px;
+  .grid {
+    gap: 20px;
   }
 
   .card {

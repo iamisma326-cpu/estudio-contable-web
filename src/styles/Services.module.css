@@ -1,6 +1,7 @@
 .section {
   background: var(--color-bg-white);
-  padding: 112px 24px;
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
 }
 
 .header {
@@ -19,12 +20,16 @@
   display: inline-block;
 }
 
+/* auto-fit en vez de un breakpoint: el número de columnas sale del ancho
+   disponible, no de un media query que se queda viejo al cambiar el gap.
+   El mínimo es 320px a propósito: con 280 cabían 3 columnas y la cuarta
+   tarjeta quedaba sola en su fila. 2x2 es la retícula de este bloque. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 28px;
-  max-width: 980px;
-  margin: 0 auto;
+  max-width: 700px;
+  margin-inline: auto;
 }
 
 .card {
@@ -92,7 +97,7 @@
 
 /* --- CTA inferior --- */
 .cta {
-  margin-top: 52px;
+  margin-top: var(--space-block);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -113,17 +118,7 @@
 }
 
 /* --- Responsive --- */
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 768px) {
-  .section {
-    padding: 72px 18px;
-  }
-
   .card {
     padding: 26px 22px;
   }

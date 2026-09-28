@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
-import useReveal from '../hooks/useReveal';
 import styles from '../styles/Faq.module.css';
 
 const faqs = [
@@ -31,13 +30,12 @@ const faqs = [
 ];
 
 export default function Faq() {
-  useReveal();
   const [open, setOpen] = useState(0);
 
   return (
     <section className={styles.section}>
       <div className={styles.inner}>
-        <div className={`${styles.header} reveal`}>
+        <div className={styles.header} data-reveal="up">
           <span className="eyebrow">Preguntas frecuentes</span>
           <h2 className="section-title">Dudas que escuchamos cada semana</h2>
           <p className="section-subtitle">
@@ -45,7 +43,7 @@ export default function Faq() {
           </p>
         </div>
 
-        <div className={`${styles.list} reveal`}>
+        <div className={styles.list} data-reveal="up">
           {faqs.map((f, i) => {
             const isOpen = open === i;
             return (
@@ -54,11 +52,22 @@ export default function Faq() {
                   className={styles.question}
                   onClick={() => setOpen(isOpen ? -1 : i)}
                   aria-expanded={isOpen}
+                  aria-controls={`faq-respuesta-${i}`}
+                  id={`faq-pregunta-${i}`}
                 >
                   <span>{f.q}</span>
-                  <Plus size={19} className={styles.plus} />
+                  <Plus size={19} className={styles.plus} aria-hidden="true" />
                 </button>
-                <div className={styles.answer} role="region">
+                {/* La animación de apertura la hace CSS con grid-template-rows,
+                    que llega a `auto` sin medir en JS. El `inert` mantiene la
+                    respuesta cerrada fuera del recorrido de tabulación. */}
+                <div
+                  className={styles.answer}
+                  id={`faq-respuesta-${i}`}
+                  role="region"
+                  aria-labelledby={`faq-pregunta-${i}`}
+                  inert={!isOpen}
+                >
                   <p>{f.a}</p>
                 </div>
               </div>

@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check } from 'lucide-react';
-import useReveal from '../hooks/useReveal';
 import { IconLedger, IconScale, IconPayroll, IconAudit } from './icons/BrandIcons';
 import styles from '../styles/Services.module.css';
 
@@ -32,12 +31,10 @@ const services = [
 ];
 
 export default function Services() {
-  useReveal();
-
   return (
     <section className={styles.section}>
       <div className="container">
-        <div className={`${styles.header} reveal`}>
+        <div className={styles.header} data-reveal="up">
           <span className="eyebrow">Servicios</span>
           <h2 className="section-title">Asesoría contable y tributaria integral</h2>
           <p className="section-subtitle">
@@ -48,7 +45,7 @@ export default function Services() {
 
         <div className={styles.grid}>
           {services.map((s) => (
-            <article key={s.title} className={`${styles.card} reveal`}>
+            <article key={s.title} className={styles.card} data-reveal="clip">
               <span className={styles.icon}>
                 <s.icon size={26} />
               </span>
@@ -66,7 +63,7 @@ export default function Services() {
           ))}
         </div>
 
-        <div className={`${styles.cta} reveal`}>
+        <div className={styles.cta} data-reveal="up">
           <p>¿No sabes por dónde empezar? Te orientamos sin costo.</p>
           <Link to="/contacto" className="btn btn-outline-dark">
             Hablar con un especialista <ArrowRight size={16} />

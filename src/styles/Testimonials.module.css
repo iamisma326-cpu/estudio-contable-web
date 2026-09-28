@@ -1,7 +1,10 @@
 .section {
   background: var(--color-bg-white);
+  /* El marquee se sale del ancho a propósito: sin clip, la cinta se ve
+     deslizarse sobre las secciones vecinas. */
   overflow: hidden;
-  padding: 112px 24px;
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
 }
 
 .header {
@@ -9,7 +12,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 44px;
+  margin-bottom: var(--space-block);
 }
 
 .header .eyebrow::after {
@@ -20,30 +23,10 @@
   display: inline-block;
 }
 
-.carousel {
+.body {
   display: flex;
   align-items: center;
   gap: 20px;
-}
-
-.arrow {
-  flex-shrink: 0;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(11, 20, 50, 0.2);
-  color: var(--color-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fff;
-  transition: all var(--transition-speed) ease;
-}
-
-.arrow:hover {
-  background: var(--color-primary);
-  color: #fff;
-  border-color: var(--color-primary);
 }
 
 .viewport {
@@ -54,7 +37,7 @@
 
 .track {
   display: flex;
-  transition: transform 0.55s cubic-bezier(0.33, 1, 0.68, 1);
+  will-change: transform;
 }
 
 .slide {
@@ -63,7 +46,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 10px 24px 0;
+  padding: 10px clamp(0px, 2vw, 24px) 0;
   margin: 0;
 }
 
@@ -81,9 +64,9 @@
 
 .quote {
   font-family: var(--font-title);
-  font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+  font-size: clamp(1.02rem, 1.7vw, 1.28rem);
   font-style: italic;
-  line-height: 1.75;
+  line-height: 1.7;
   color: var(--color-text);
   max-width: 780px;
   margin-bottom: 24px;
@@ -103,40 +86,90 @@
   margin-top: 3px;
 }
 
+.arrow {
+  flex-shrink: 0;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  border-radius: 50%;
+  border: 1.5px solid rgba(11, 20, 50, 0.2);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
+}
+
+.arrow:hover {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
 .dots {
   display: flex;
   justify-content: center;
-  gap: 9px;
-  margin-top: 34px;
+  gap: 4px;
+  margin-top: 28px;
 }
 
 .dot {
+  /* 44x44 de área de toque con un punto de 9px visible dentro */
+  width: var(--tap-min);
+  height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+}
+
+.dot::after {
+  content: '';
+  display: block;
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: rgba(11, 20, 50, 0.2);
-  transition: all var(--transition-speed) ease;
-  padding: 0;
+  background: rgba(11, 20, 50, 0.25);
+  transition: background-color var(--transition-speed) ease, width var(--transition-speed) ease;
 }
 
-.dotActive {
+.dotActive::after {
   background: var(--color-accent);
-  width: 26px;
+  width: 24px;
   border-radius: 5px;
 }
 
-/* --- Responsive --- */
-@media (max-width: 768px) {
-  .section {
-    padding: 72px 18px;
-  }
+/* ---------- Modo marquee (escritorio) ----------
+   Las flechas se ocultan: en cinta continua no hay índice al que saltar,
+   y un botón que no hace nada visible es peor que no tenerlo. */
+.body[data-mode='marquee'] .arrow {
+  display: none;
+}
 
-  .carousel {
+.body[data-mode='marquee'] .slide {
+  flex: 0 0 auto;
+  width: min(560px, 78vw);
+  padding-inline: clamp(16px, 3vw, 44px);
+  border-right: 1px solid rgba(11, 20, 50, 0.08);
+}
+
+.body[data-mode='marquee'] .quote {
+  font-size: 1.06rem;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .body {
     gap: 0;
   }
 
+  /* Las flechas se mantienen: en carrusel de una en una son el único
+     camino sin gesto. Bajarlas de 44 aquí las sacarían del objetivo
+     táctil justo en el dispositivo que más las necesita. */
   .arrow {
-    display: none;
+    flex-shrink: 0;
   }
 
   .slide {
@@ -148,6 +181,15 @@
   .quote {
     font-size: 1rem;
     text-align: left;
+  }
+
+  .slide {
+    align-items: flex-start;
+  }
+
+  .stars,
+  .quoteIcon {
+    align-self: flex-start;
   }
 
   .name {

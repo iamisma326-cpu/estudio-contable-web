@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import useReveal from '../hooks/useReveal';
+import { gsap, useGSAP, prefersReducedMotion } from '../lib/gsap';
+import { PARALLAX } from '../lib/motion';
 import { IconLock, IconTimer, IconChat } from './icons/BrandIcons';
 import styles from '../styles/WhyUs.module.css';
 
@@ -22,12 +24,48 @@ const advantages = [
 ];
 
 export default function WhyUs() {
-  useReveal();
+  const section = useRef<HTMLElement>(null);
+
+  /* Parallax por capas en las tarjetas del aside.
+     Se anima cada tarjeta, no el `aside` completo: el `aside` ya es dueño
+     de su entrada por data-reveal y dos tweens sobre la misma propiedad
+     se pisan. */
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      const mm = gsap.matchMedia();
+      mm.add('(min-width: 1025px)', () => {
+        const cards = gsap.utils.toArray<HTMLElement>('[data-depth]');
+        if (!cards.length) return;
+        cards.forEach((card, i) => {
+          // Cada capa se mueve un poco más: de ahí la sensación de fondo.
+          const amount = PARALLAX.amount * (0.4 + i * 0.3);
+          gsap.fromTo(
+            card,
+            { y: amount },
+            {
+              y: -amount,
+              ease: PARALLAX.ease,
+              scrollTrigger: {
+                trigger: section.current,
+                start: PARALLAX.start,
+                end: PARALLAX.end,
+                scrub: true,
+                invalidateOnRefresh: true,
+              },
+            }
+          );
+        });
+      });
+      return () => mm.revert();
+    },
+    { scope: section }
+  );
 
   return (
-    <section className={styles.section}>
+    <section className={styles.section} ref={section}>
       <div className={styles.inner}>
-        <div className={`${styles.content} reveal`}>
+        <div className={styles.content} data-reveal="up">
           <span className={styles.eyebrow}>¿Por qué nosotros?</span>
           <h2 className={styles.title}>
             Más que declaraciones: un aliado de tu negocio
@@ -51,8 +89,8 @@ export default function WhyUs() {
           </ul>
         </div>
 
-        <aside className={`${styles.aside} reveal`}>
-          <div className={styles.asideCard}>
+        <aside className={styles.aside} data-reveal="right">
+          <div className={styles.asideCard} data-depth>
             <CheckCircle2 size={26} className={styles.asideIcon} />
             <h3>Contadores colegiados</h3>
             <p>
@@ -60,7 +98,7 @@ export default function WhyUs() {
               del Perú, con capacitación permanente en normativa SUNAT y NIIF.
             </p>
           </div>
-          <div className={styles.asideCard}>
+          <div className={styles.asideCard} data-depth>
             <CheckCircle2 size={26} className={styles.asideIcon} />
             <h3>Atención en todo el Perú</h3>
             <p>
@@ -68,7 +106,7 @@ export default function WhyUs() {
               Reuniones presenciales en San Isidro cuando las necesites.
             </p>
           </div>
-          <div className={styles.asideCardGold}>
+          <div className={`${styles.asideCardGold} ${styles.depthThird}`} data-depth>
             <p className={styles.goldLabel}>Nuestro compromiso</p>
             <p className={styles.goldText}>
               «Si presentamos una declaración tarde, la multa la asumimos nosotros».

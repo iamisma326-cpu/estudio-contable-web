@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 import useSEO from '../hooks/useSEO';
-import useReveal from '../hooks/useReveal';
+import useRevealAnimations from '../hooks/useRevealAnimations';
 import ContactCta from '../components/ContactCta';
 import styles from '../styles/ServicesPage.module.css';
 
@@ -92,24 +92,25 @@ const services = [
 ];
 
 export default function ServicesPage() {
-  useReveal();
+  useRevealAnimations();
 
   useSEO({
     title: 'Servicios | Contabilidad, Tributación, Planillas y Auditoría en Perú',
     description:
       'Outsourcing contable, asesoría tributaria SUNAT, planillas, auditorías, constitución de empresas y asesoría financiera en Lima, Perú. Honorarios desde S/ 250 mensuales.',
     canonical: 'https://sanchezdelgado.pe/servicios',
+    breadcrumb: [{ name: 'Servicios', path: '/servicios' }],
   });
 
   return (
     <>
       <section className={styles.hero}>
         <div className="container">
-          <span className={`${styles.eyebrow} reveal`}>Servicios</span>
-          <h1 className={`${styles.title} reveal`}>
+          <span className={styles.eyebrow} data-reveal="up">Servicios</span>
+          <h1 className={styles.title} data-reveal="up" data-reveal-delay="0.08">
             Soluciones contables integrales para tu empresa
           </h1>
-          <p className={`${styles.lead} reveal`}>
+          <p className={styles.lead} data-reveal="up" data-reveal-delay="0.16">
             Seis líneas de servicio que cubren todo el ciclo de tu negocio: desde su
             constitución hasta la auditoría de sus estados financieros.
           </p>
@@ -118,9 +119,9 @@ export default function ServicesPage() {
 
       <section className={styles.list}>
         <div className="container">
-          <div className={styles.grid}>
+          <div className={styles.grid} data-reveal-group="clip">
             {services.map((s) => (
-              <article key={s.title} className={`${styles.card} reveal`}>
+              <article key={s.title} className={styles.card} data-reveal>
                 <div className={styles.cardHead}>
                   <span className={styles.tag}>{s.tag}</span>
                   <span className={styles.price}>{s.price}</span>
@@ -148,14 +149,14 @@ export default function ServicesPage() {
 
       <section className={styles.comparison}>
         <div className="container">
-          <span className={`${styles.eyebrow} reveal`}>Guía rápida</span>
-          <h2 className={`${styles.subtitle} reveal`}>¿Qué régimen tributario te conviene?</h2>
-          <p className={`${styles.comparisonLead} reveal`}>
+          <span className={styles.eyebrow} data-reveal="up">Guía rápida</span>
+          <h2 className={styles.subtitle} data-reveal="up">¿Qué régimen tributario te conviene?</h2>
+          <p className={styles.comparisonLead} data-reveal="up">
             Referencia 2026 con UIT de S/ 5,500. En el diagnóstico comparamos escenarios
             con tus cifras reales antes de recomendar.
           </p>
 
-          <div className={`${styles.tableWrap} reveal`}>
+          <div className={styles.tableWrap} data-reveal="up">
             <table className={styles.table}>
               <thead>
                 <tr>

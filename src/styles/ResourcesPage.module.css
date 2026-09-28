@@ -4,7 +4,9 @@
     radial-gradient(ellipse 55% 45% at 85% 10%, rgba(131, 44, 74, 0.15), transparent 60%),
     linear-gradient(160deg, #070E22 0%, #0B1432 100%);
   color: var(--color-text-inverted);
-  padding: 160px 24px 80px;
+  padding-block: var(--space-section);
+  padding-top: calc(var(--header-offset) + clamp(40px, 6vw, 72px));
+  padding-inline: var(--gutter);
 }
 
 .eyebrow {
@@ -61,13 +63,14 @@
 
 /* ===== Calendario de vencimientos ===== */
 .deadlines {
-  padding: 112px 24px;
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
   background: var(--color-bg-light);
 }
 
 .timeline {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 18px;
 }
 
@@ -104,13 +107,14 @@
 
 /* ===== Actualidad tributaria ===== */
 .articles {
-  padding: 112px 24px;
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
   background: var(--color-bg-white);
 }
 
 .articlesGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 22px;
 }
 
@@ -171,13 +175,15 @@
 
 /* ===== Glosario ===== */
 .glossary {
-  padding: 112px 24px;
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
   background: var(--color-bg-light);
 }
 
 .searchInput {
   width: 100%;
   max-width: 460px;
+  min-height: var(--tap-min);
   padding: 14px 20px;
   border-radius: var(--border-radius-sm);
   border: 1.5px solid rgba(11, 20, 50, 0.18);
@@ -196,7 +202,7 @@
 
 .glossaryGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 16px;
 }
 
@@ -227,43 +233,14 @@
 }
 
 /* ===== Responsive ===== */
-@media (max-width: 1024px) {
-  .hero {
-    padding: 148px 24px 68px;
-  }
-
-  .articlesGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 768px) {
-  .hero {
-    padding: 130px 18px 56px;
-  }
-
-  .deadlines,
-  .articles,
-  .glossary {
-    padding: 72px 18px;
-  }
-
-  .timeline,
-  .glossaryGrid {
-    grid-template-columns: 1fr;
-  }
-
   .sectionHead {
     flex-direction: column;
     gap: 10px;
   }
 }
 
-@media (max-width: 560px) {
-  .articlesGrid {
-    grid-template-columns: 1fr;
-  }
-
+@media (max-width: 480px) {
   .articleCard {
     padding: 22px 20px;
   }
