@@ -11,6 +11,7 @@ import {
   type UpcomingDeadline,
 } from '../data/sunatSchedule';
 import { useSunatSchedule } from '../hooks/useSunatSchedule';
+import { useRentaAnual } from '../hooks/useRentaAnual';
 import { whatsappLink } from '../config/contact';
 import styles from '../styles/DeadlineConsult.module.css';
 
@@ -47,6 +48,7 @@ export default function DeadlineConsult({ onDigitChange }: Props) {
   const [error, setError] = useState('');
   const [digit, setDigit] = useState<number | null>(null);
   const schedule = useSunatSchedule();
+  const rentaData = useRentaAnual();
 
   // Dígito guardado de una visita anterior
   useEffect(() => {
@@ -108,7 +110,10 @@ export default function DeadlineConsult({ onDigitChange }: Props) {
       ? undefined
       : `Hola Sánchez Delgado & Asociados, mi RUC termina en ${groupLabelFor(digit)}. ¿Me confirman mi cronograma de vencimientos?`;
 
-  const renta = useMemo(() => (digit === null ? null : rentaAnual(digit)), [digit]);
+  const renta = useMemo(
+    () => (digit === null ? null : rentaAnual(digit, rentaData.general, rentaData.ampliado)),
+    [digit, rentaData]
+  );
 
   return (
     <div className={styles.card}>
@@ -212,7 +217,7 @@ export default function DeadlineConsult({ onDigitChange }: Props) {
           {renta && (
             <div className={styles.rentaBlock}>
               <h4 className={styles.rentaTitle}>
-                <Link to="/renta-anual-2025">Declaración Anual de Renta 2025 →</Link>
+                <Link to="/renta-anual-2025">Declaración Anual de Renta {rentaData.ejercicio} →</Link>
               </h4>
               <div className={styles.rentaGrid}>
                 <div className={styles.rentaCard}>
@@ -233,9 +238,14 @@ export default function DeadlineConsult({ onDigitChange }: Props) {
               <p className={styles.rentaNote}>
                 Cuál te aplica depende de tu régimen: las empresas fuera del alcance de
                 la Ley N° 31940 declaran en el cronograma general; las personas naturales
-                y las MYPE con ingresos 2024 de hasta 1,700 UIT, en el ampliado. El
-                Formulario 710 está disponible desde el 2 de enero de 2026 y el 709 desde
-                el 31 de marzo de 2026.
+                y las MYPE con ingresos {rentaData.ejercicio - 1} de hasta 1,700 UIT, en
+                el ampliado. El Formulario 710 suele estar disponible desde inicios de
+                enero y el 709 desde fines de marzo — confirmamos disponibilidad de cada
+                año en la{' '}
+                <Link to="/renta-anual-2025" className={styles.rentaNoteLink}>
+                  guía de Renta Anual
+                </Link>
+                .
               </p>
             </div>
           )}

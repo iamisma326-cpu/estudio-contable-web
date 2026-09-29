@@ -194,6 +194,25 @@ export const RENTA_AMPLIADO_2025: Date[] = [
   new Date(2026, 5, 10), // Buenos Contribuyentes
 ];
 
+/** Ejercicio del cronograma de renta embebido (respaldo del endpoint /api/renta-anual) */
+export const RENTA_EJERCICIO_EMBEBIDO = 2025;
+
+/**
+ * Fila de fecha serializable — mes 0-indexed para reconstruir con
+ * `new Date(anio, mes, dia)` en medianoche LOCAL (evita el desfase de
+ * zona que produce parsear strings ISO como UTC).
+ */
+export interface RentaRow {
+  anio: number;
+  mes: number;
+  dia: number;
+}
+
+/** Filas del API → Date locales */
+export function fechasDesdeFilas(rows: RentaRow[]): Date[] {
+  return rows.map((r) => new Date(r.anio, r.mes, r.dia));
+}
+
 export interface RentaAnual {
   /** Fecha del cronograma General para el dígito */
   general: Date;
@@ -201,10 +220,14 @@ export interface RentaAnual {
   ampliado: Date;
 }
 
-/** Fechas de la DJ Anual de Renta 2025 para un último dígito (0-9) o BC (10) */
-export function rentaAnual(lastDigit: number): RentaAnual {
+/** Fechas de la DJ Anual de Renta para un último dígito (0-9) o BC (10) */
+export function rentaAnual(
+  lastDigit: number,
+  general: Date[] = RENTA_GENERAL_2025,
+  ampliado: Date[] = RENTA_AMPLIADO_2025
+): RentaAnual {
   const i = lastDigit === 10 ? 10 : lastDigit % 10;
-  return { general: RENTA_GENERAL_2025[i], ampliado: RENTA_AMPLIADO_2025[i] };
+  return { general: general[i], ampliado: ampliado[i] };
 }
 
 /** Días naturales hasta una fecha (negativo = ya pasó), medido en Lima */

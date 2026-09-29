@@ -6,10 +6,9 @@ import ContactCta from '../components/ContactCta';
 import { IconWhatsApp } from '../components/icons/BrandIcons';
 import { whatsappLink } from '../config/contact';
 import {
-  RENTA_GENERAL_2025,
-  RENTA_AMPLIADO_2025,
   MONTH_NAMES,
 } from '../data/sunatSchedule';
+import { useRentaAnual } from '../hooks/useRentaAnual';
 import { RENTA_FAQS } from '../data/rentaFaqs';
 import styles from '../styles/RentaPage.module.css';
 
@@ -49,6 +48,7 @@ function RentaTable({ title, subtitle, dates }: { title: string; subtitle: strin
 
 export default function RentaPage() {
   useRevealAnimations();
+  const renta = useRentaAnual();
 
   useSEO({
     title: 'Declaración Anual de Renta 2025: fechas y guía completa — Sánchez Delgado & Asociados',
@@ -133,23 +133,19 @@ export default function RentaPage() {
           <div className={styles.tablesGrid} data-reveal-group="up">
             <RentaTable
               title="a) Cronograma General — Empresas"
-              subtitle="Negocios fuera del alcance de la Ley N° 31940: ingresos 2024 mayores a 1,700 UIT, iniciaron operaciones en 2025, pertenecen a grupos económicos o gozan de beneficios especiales."
-              dates={RENTA_GENERAL_2025}
+              subtitle="Negocios fuera del alcance de la Ley N° 31940: ingresos mayores a 1,700 UIT, iniciaron operaciones en el ejercicio, pertenecen a grupos económicos o gozan de beneficios especiales."
+              dates={renta.general}
             />
             <RentaTable
               title="b) Cronograma Ampliado — Personas y MYPE"
-              subtitle="Personas naturales y micro/small empresas de la Ley N° 31940 con ingresos netos 2024 de hasta 1,700 UIT."
-              dates={RENTA_AMPLIADO_2025}
+              subtitle="Personas naturales y micro/small empresas de la Ley N° 31940 con ingresos netos del ejercicio anterior de hasta 1,700 UIT."
+              dates={renta.ampliado}
             />
           </div>
 
           <p className={styles.legalNote} data-reveal="fade">
             Fuente:{' '}
-            <a
-              href="https://www.sunat.gob.pe/orientacion/cronogramas/2026/cRenta2025.html"
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a href={renta.url} target="_blank" rel="noreferrer">
               Cronograma oficial en sunat.gob.pe
             </a>
             . Las fechas pueden variar por prórrogas por estado de emergencia en

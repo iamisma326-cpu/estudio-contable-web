@@ -6,6 +6,7 @@ import {defineConfig} from 'vite';
 // en desarrollo para que /api/* exista también en `npm run dev`.
 import tipoCambio from './api/tipo-cambio';
 import cronograma from './api/cronograma';
+import rentaAnual from './api/renta-anual';
 
 /** Shape que esperan los handlers de api/ (espejo de ResLike en cada uno) */
 interface DevRes {
@@ -43,6 +44,7 @@ export default defineConfig(() => {
 
           server.middlewares.use('/api/tipo-cambio', bridge(tipoCambio));
           server.middlewares.use('/api/cronograma', bridge(cronograma));
+          server.middlewares.use('/api/renta-anual', bridge(rentaAnual));
         },
       },
     ],
