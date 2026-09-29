@@ -1,0 +1,256 @@
+/* ===== Calculadora de regímenes tributarios ===== */
+
+.card {
+  background: #fff;
+  border-radius: var(--border-radius);
+  border-left: 3px solid var(--color-accent);
+  box-shadow: var(--box-shadow);
+  padding: clamp(24px, 4vw, 40px);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fieldLabel {
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 0.95rem;
+}
+
+.fieldLabel small {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.input {
+  min-height: var(--tap-min);
+  padding: 12px 16px;
+  border-radius: var(--border-radius-sm);
+  border: 1.5px solid rgba(11, 20, 50, 0.18);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--color-text);
+  background: #fff;
+  outline: none;
+  transition: border-color var(--transition-speed) ease;
+}
+
+.input:focus {
+  border-color: var(--color-accent);
+}
+
+.input::placeholder {
+  color: rgba(26, 33, 48, 0.4);
+}
+
+.submitBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap-min);
+  width: fit-content;
+  padding: 12px 24px;
+  border-radius: var(--border-radius-sm);
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #6A2239;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -10px rgba(131, 44, 74, 0.55);
+}
+
+.submitBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.note {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+  margin: 0;
+  max-width: 560px;
+}
+
+/* --- Resultados --- */
+.results {
+  margin-top: 28px;
+  padding-top: 28px;
+  border-top: 1px solid rgba(11, 20, 50, 0.12);
+  animation: resultsIn 0.45s ease both;
+}
+
+@keyframes resultsIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.resultsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 14px;
+}
+
+.resultCard {
+  background: var(--color-bg-light);
+  border-radius: var(--border-radius-sm);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1.5px solid transparent;
+}
+
+.resultBest {
+  border-color: var(--color-accent);
+  background: #fff;
+  box-shadow: 0 10px 26px -12px rgba(131, 44, 74, 0.35);
+}
+
+.resultOff {
+  opacity: 0.55;
+}
+
+.resultHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.resultHead h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.bestTag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--color-accent);
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.mainValue {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.mainValue strong {
+  font-size: 1.35rem;
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.resultBest .mainValue strong {
+  color: var(--color-primary);
+}
+
+.mainValue span {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.pac {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.off {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+/* --- CTAs --- */
+.ctaRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.ctaDark,
+.ctaWa {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap-min);
+  padding: 12px 22px;
+  border-radius: var(--border-radius-sm);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.ctaDark {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.ctaDark:hover {
+  background: var(--color-primary-light);
+  transform: translateY(-2px);
+}
+
+.ctaWa {
+  border: 1.5px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.ctaWa:hover {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.finePrint {
+  margin: 18px 0 0;
+  font-size: 0.74rem;
+  color: rgba(26, 33, 48, 0.55);
+  line-height: 1.6;
+}
+
+.fineLink {
+  color: var(--color-accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 560px) {
+  .submitBtn {
+    width: 100%;
+  }
+}

@@ -15,10 +15,13 @@ interface SEOData {
   keywords?: string;
   /** Migas de pan; se traducen a un BreadcrumbList de schema.org. */
   breadcrumb?: Crumb[];
+  /** Preguntas para inyectar un FAQPage de schema.org (rich results). */
+  faq?: { q: string; a: string }[];
 }
 
 const SITE = 'https://sanchezdelgado.pe';
 const BREADCRUMB_ID = 'seo-breadcrumb';
+const FAQ_ID = 'seo-faq';
 
 /**
  * SEO por ruta.
@@ -94,6 +97,34 @@ export default function useSEO(data: SEOData) {
       document.head.appendChild(script);
     }
     script.textContent = JSON.stringify(jsonLd);
+
+    // --- FAQPage ---
+    // Un solo nodo reutilizable por ruta; el contenido debe coincidir con el
+    // visible en la página (requisito de Google para rich results).
+    const faqScript = document.getElementById(FAQ_ID) as HTMLScriptElement | null;
+    if (!meta.faq || meta.faq.length === 0) {
+      faqScript?.remove();
+    } else {
+      const faqJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: meta.faq.map((f) => ({
+          '@type': 'Question',
+          name: f.q,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: f.a,
+          },
+        })),
+      };
+      const el = faqScript ?? document.createElement('script');
+      if (!faqScript) {
+        el.type = 'application/ld+json';
+        el.id = FAQ_ID;
+        document.head.appendChild(el);
+      }
+      el.textContent = JSON.stringify(faqJsonLd);
+    }
   }, [
     meta.title,
     meta.description,
@@ -102,6 +133,7 @@ export default function useSEO(data: SEOData) {
     meta.ogImage,
     meta.canonical,
     meta.keywords,
+    meta.faq,
     breadcrumb,
   ]);
 }

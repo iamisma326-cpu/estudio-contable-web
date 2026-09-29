@@ -1,0 +1,142 @@
+/* ===== Tabla cronograma SUNAT 2026 ===== */
+
+.wrapper {
+  position: relative;
+}
+
+/* El hint sólo aparece cuando la tabla no entra */
+.scrollHint {
+  display: none;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  text-align: right;
+  margin-bottom: 8px;
+}
+
+.tableScroll {
+  overflow-x: auto;
+  border-radius: var(--border-radius-sm);
+  border: 1px solid rgba(11, 20, 50, 0.12);
+  background: #fff;
+  box-shadow: var(--box-shadow);
+}
+
+.tableScroll:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.table th,
+.table td {
+  padding: 12px 14px;
+  text-align: center;
+  border-bottom: 1px solid rgba(11, 20, 50, 0.08);
+  white-space: nowrap;
+}
+
+.table thead th {
+  background: var(--color-primary);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Columna del período: a la izquierda, con jerarquía */
+.table tbody th {
+  text-align: left;
+  background: var(--color-bg-light);
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.table tbody tr:last-child th,
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover td {
+  background: rgba(236, 237, 239, 0.5);
+}
+
+/* Columna resaltada del dígito consultado */
+.table td.tdActive,
+.table tbody tr:hover td.tdActive {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  font-weight: 700;
+  border-inline: 2px solid var(--color-accent);
+}
+
+.table thead th.thActive {
+  background: var(--color-accent);
+}
+
+/* Mes pequeñito junto al día */
+.tdMonth {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.tdActive .tdMonth {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.footnote {
+  margin-top: 14px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.footnote a {
+  color: var(--color-accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.footnote a:hover {
+  color: #6A2239;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 860px) {
+  .scrollHint {
+    display: block;
+  }
+}
+
+/* Sólo lectores de pantalla */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media print {
+  .scrollHint {
+    display: none;
+  }
+}

@@ -1,6 +1,7 @@
 import useSEO from '../hooks/useSEO';
 import useRevealAnimations from '../hooks/useRevealAnimations';
 import IntroSplash from '../components/IntroSplash';
+import SeasonBanner from '../components/SeasonBanner';
 import Hero from '../components/Hero';
 import Services from '../components/Services';
 import WhyUs from '../components/WhyUs';
@@ -26,6 +27,10 @@ export default function Home() {
       {/* Animación de apertura: solo en Inicio, una vez por sesión */}
       <IntroSplash />
       <Hero />
+      {/* Aviso estacional: solo si hoy cae dentro de una ventana de vencimientos */}
+      <div className="container season-banner-wrap">
+        <SeasonBanner />
+      </div>
       <Services />
       <WhyUs />
       <Process />

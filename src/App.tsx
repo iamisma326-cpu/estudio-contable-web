@@ -10,6 +10,7 @@ const Home = lazy(() => import('./pages/Home'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ServicesPage = lazy(() => import('./pages/ServicesPage'));
 const ResourcesPage = lazy(() => import('./pages/ResourcesPage'));
+const RentaPage = lazy(() => import('./pages/RentaPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 
 function PageLoader() {
@@ -42,6 +43,7 @@ export default function App() {
               <Route path="/nosotros" element={<AboutPage />} />
               <Route path="/servicios" element={<ServicesPage />} />
               <Route path="/recursos" element={<ResourcesPage />} />
+              <Route path="/renta-anual-2025" element={<RentaPage />} />
               <Route path="/contacto" element={<ContactPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

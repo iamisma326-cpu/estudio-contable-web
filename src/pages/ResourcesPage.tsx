@@ -1,19 +1,27 @@
-import { useState } from 'react';
-import { IconCalendar, IconNews, IconSearchTerm } from '../components/icons/BrandIcons';
+import { useCallback, useState } from 'react';
+import { IconCalendar, IconNews, IconSearchTerm, IconCalc } from '../components/icons/BrandIcons';
 import useSEO from '../hooks/useSEO';
 import useRevealAnimations from '../hooks/useRevealAnimations';
 import ContactCta from '../components/ContactCta';
+import DeadlineConsult from '../components/DeadlineConsult';
+import DeadlineTable from '../components/DeadlineTable';
+import ExchangeRate from '../components/ExchangeRate';
+import RegimeCalculator from '../components/RegimeCalculator';
 import styles from '../styles/ResourcesPage.module.css';
 
+/**
+ * Hitos del calendario tributario peruano (no dependen del dígito del RUC).
+ * Las obligaciones mensuales (PDT 621, PLAME, SIRE/PLE) SÍ dependen del
+ * dígito: las cubre el consultor y la tabla de arriba con el cronograma
+ * oficial 2026.
+ */
 const deadlines = [
-  { date: '12 de cada mes', title: 'Planilla electrónica (PLAME)', desc: 'Envío de la información de las remuneraciones del mes anterior.' },
-  { date: '14 de cada mes', title: 'Libros electrónicos (PLE/SIRE)', desc: 'Registro de Compras y Ventas según cronograma por último dígito del RUC.' },
-  { date: '18 de cada mes', title: 'Declaración mensual (PDT 621)', desc: 'IGV, Impuesto a la Renta mensual y pagos a cuenta según cronograma SUNAT.' },
-  { date: 'Enero', title: 'Planilla anual T4', desc: 'Declaración anual de remuneraciones de todo el personal.' },
-  { date: 'Marzo', title: 'Gratificaciones Fiestas Patrias', desc: 'Pago al personal más depósito de la EsSalud correspondiente.' },
-  { date: 'Abril', title: 'DJ Anual de Renta (FV 710)', desc: 'Declaración Jurada anual para RMT y Régimen General.' },
-  { date: 'Julio', title: 'Gratificaciones de Fiestas Patrias (2.ª)', desc: 'Segunda gratificación y bonificación extraordinaria del 9 %.' },
-  { date: 'Diciembre', title: 'Gratificaciones de Navidad', desc: 'Pago de la gratificación de Navidad y CTS pendientes.' },
+  { date: 'Mar-Abr 2026', title: 'DJ Anual de Renta — empresas', desc: 'Cronograma General SUNAT: del 26 de marzo al 13 de abril de 2026 según el último dígito del RUC, para empresas fuera del alcance de la Ley N° 31940.' },
+  { date: 'May-Jun 2026', title: 'DJ Anual de Renta — personas y MYPE', desc: 'Cronograma ampliado (Ley N° 31940): del 27 de mayo al 10 de junio de 2026 para personas naturales y MYPE con ingresos hasta 1,700 UIT.' },
+  { date: 'Mayo', title: 'CTS primer depósito', desc: 'Depósito semestral de la Compensación por Tiempo de Servicios en el banco elegido por el trabajador.' },
+  { date: 'Julio', title: 'Gratificaciones de Fiestas Patrias', desc: 'Pago de la primera gratificación (julio) más la bonificación extraordinaria del 9 %, con su aporte a EsSalud.' },
+  { date: 'Noviembre', title: 'CTS segundo depósito', desc: 'Segundo depósito semestral de la CTS (mayo y noviembre de cada año).' },
+  { date: 'Diciembre', title: 'Gratificaciones de Navidad', desc: 'Segunda gratificación legal más bonificación del 9 %, antes del cierre del ejercicio contable.' },
 ];
 
 const articles = [
@@ -57,6 +65,11 @@ const glossary = [
 export default function ResourcesPage() {
   useRevealAnimations();
   const [query, setQuery] = useState('');
+  const [activeDigit, setActiveDigit] = useState<number | null>(null);
+
+  const handleDigitChange = useCallback((digit: number | null) => {
+    setActiveDigit(digit);
+  }, []);
 
   const filtered = glossary.filter(
     (g) =>
@@ -93,13 +106,27 @@ export default function ResourcesPage() {
           <div className={styles.sectionHead} data-reveal="up">
             <IconCalendar size={26} className={styles.sectionIcon} />
             <div>
-              <h2 className={styles.subtitle}>Vencimientos clave del año</h2>
+              <h2 className={styles.subtitle}>Cronograma SUNAT 2026</h2>
               <p className={styles.sectionLead}>
-                Las fechas exactas varían según el último dígito de tu RUC. Nuestro
-                equipo controla tu cronograma personalizado cada mes.
+                Tu vencimiento no es un día fijo del mes: depende del último dígito de
+                tu RUC y cambia cada mes. Consulta tus fechas exactas aquí —
+                gratis, sin registro.
               </p>
             </div>
           </div>
+
+          <div data-reveal="up" data-reveal-delay="0.08">
+            <DeadlineConsult onDigitChange={handleDigitChange} />
+          </div>
+
+          <div className={styles.tableWrap}>
+            <DeadlineTable activeDigit={activeDigit} />
+          </div>
+
+          <p className={styles.timelineNote} data-reveal="fade">
+            Además del cronograma mensual, estos son los hitos del año que no
+            dependen del dígito de tu RUC:
+          </p>
 
           <div className={styles.timeline} data-reveal-group="up">
             {deadlines.map((d) => (
@@ -111,6 +138,41 @@ export default function ResourcesPage() {
                 </div>
               </article>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Herramientas: tipo de cambio + calculadora */}
+      <section className={styles.tools}>
+        <div className="container">
+          <div className={styles.sectionHead} data-reveal="up">
+            <IconCalc size={26} className={styles.sectionIcon} />
+            <div>
+              <h2 className={styles.subtitle}>Herramientas del día a día</h2>
+              <p className={styles.sectionLead}>
+                Datos oficiales y estimaciones rápidas para tus decisiones de hoy.
+                Gratis, sin registro.
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.toolsGrid} data-reveal="up" data-reveal-delay="0.08">
+            <div className={styles.toolsCol}>
+              <h3 className={styles.toolsSubtitle}>Tipo de cambio SUNAT</h3>
+              <p className={styles.toolsNote}>
+                Compra y venta oficiales del dólar, referencia para tus
+                facturaciones y regularizaciones en moneda extranjera.
+              </p>
+              <ExchangeRate />
+            </div>
+            <div className={styles.toolsCol}>
+              <h3 className={styles.toolsSubtitle}>¿Qué régimen te conviene?</h3>
+              <p className={styles.toolsNote}>
+                Compara el impuesto anual estimado entre RER, RMT y Régimen
+                General con tus ventas y gastos del año.
+              </p>
+              <RegimeCalculator />
+            </div>
           </div>
         </div>
       </section>

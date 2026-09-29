@@ -10,6 +10,7 @@ const navLinks = [
   { label: 'Nosotros', link: '/nosotros' },
   { label: 'Servicios', link: '/servicios' },
   { label: 'Recursos', link: '/recursos' },
+  { label: 'Renta Anual 2025', link: '/renta-anual-2025' },
   { label: 'Contacto', link: '/contacto' },
 ];
 

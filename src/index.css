@@ -204,6 +204,15 @@ html.scroll-locked body {
   touch-action: none;
 }
 
+/* Franja del aviso estacional de vencimientos (Home, tras el Hero).
+   El banner vive en su CSS module; esto sólo lo airea sobre la
+   sección de servicios que lo sigue. */
+.season-banner-wrap {
+  margin-top: calc(-1 * var(--space-section-sm));
+  position: relative;
+  z-index: 2;
+}
+
 ::selection {
   background: var(--color-accent);
   color: #fff;

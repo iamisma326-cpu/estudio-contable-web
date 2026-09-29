@@ -1,0 +1,99 @@
+/* ===== Widget tipo de cambio SUNAT ===== */
+
+.card {
+  background: var(--color-primary);
+  color: var(--color-text-inverted);
+  border-radius: var(--border-radius);
+  padding: 20px 24px;
+  box-shadow: var(--box-shadow);
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent-soft);
+  background: rgba(214, 153, 172, 0.12);
+  border: 1px solid rgba(214, 153, 172, 0.3);
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.pair {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(236, 237, 239, 0.6);
+}
+
+.values {
+  display: flex;
+  gap: 26px;
+  flex-wrap: wrap;
+}
+
+.value {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.valueLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(236, 237, 239, 0.55);
+  font-weight: 600;
+}
+
+.value strong {
+  font-size: 1.45rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.date {
+  margin: 12px 0 0;
+  font-size: 0.75rem;
+  color: rgba(236, 237, 239, 0.5);
+}
+
+.error {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: rgba(236, 237, 239, 0.75);
+}
+
+.error a {
+  color: var(--color-accent-soft);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Estado de carga: bloque que respira, sin saltos de layout */
+.skeleton {
+  height: 46px;
+  border-radius: var(--border-radius-sm);
+  background: rgba(236, 237, 239, 0.08);
+  animation: skeletonPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.9; }
+}
