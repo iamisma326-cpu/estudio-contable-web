@@ -10,6 +10,7 @@ import {
   daysUntil,
   type UpcomingDeadline,
 } from '../data/sunatSchedule';
+import { useSunatSchedule } from '../hooks/useSunatSchedule';
 import { whatsappLink } from '../config/contact';
 import styles from '../styles/DeadlineConsult.module.css';
 
@@ -45,6 +46,7 @@ export default function DeadlineConsult({ onDigitChange }: Props) {
   const [ruc, setRuc] = useState('');
   const [error, setError] = useState('');
   const [digit, setDigit] = useState<number | null>(null);
+  const schedule = useSunatSchedule();
 
   // Dígito guardado de una visita anterior
   useEffect(() => {
@@ -61,8 +63,8 @@ export default function DeadlineConsult({ onDigitChange }: Props) {
   }, [digit, onDigitChange]);
 
   const upcoming = useMemo<UpcomingDeadline[]>(
-    () => (digit === null ? [] : upcomingDeadlines(digit)),
-    [digit],
+    () => (digit === null ? [] : upcomingDeadlines(digit, 3, schedule?.meses)),
+    [digit, schedule]
   );
 
   function commit(nextDigit: number | null) {

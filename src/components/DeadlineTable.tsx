@@ -1,4 +1,5 @@
-import { MONTHLY_SCHEDULE_2026, MONTH_NAMES, paymentInfo, columnIndex } from '../data/sunatSchedule';
+import { MONTH_NAMES, paymentInfo, columnIndex, type MonthRow } from '../data/sunatSchedule';
+import { useSunatSchedule } from '../hooks/useSunatSchedule';
 import styles from '../styles/DeadlineTable.module.css';
 
 interface Props {
@@ -12,6 +13,11 @@ const HEADERS = ['Período', '0', '1', '2 y 3', '4 y 5', '6 y 7', '8 y 9', 'Buen
 const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic'];
 
 export default function DeadlineTable({ activeDigit }: Props) {
+  // Cronograma sincronizado con sunat.gob.pe; embebido 2026 como respaldo
+  const schedule = useSunatSchedule();
+  const rows: MonthRow[] = schedule?.meses ?? [];
+  const ejercicio = schedule?.ejercicio ?? 2026;
+
   // Índice de columna de fechas resaltada para el dígito activo
   const activeCol = activeDigit === null ? null : columnIndex(activeDigit);
 
@@ -45,8 +51,8 @@ export default function DeadlineTable({ activeDigit }: Props) {
             </tr>
           </thead>
           <tbody>
-            {MONTHLY_SCHEDULE_2026.map((row) => {
-              const pay = paymentInfo(row.month);
+            {rows.map((row) => {
+              const pay = paymentInfo(row.month, rows);
               return (
                 <tr key={row.month}>
                   <th scope="row">{`${MONTHS_SHORT[row.month]}-${row.year}`}</th>
@@ -55,7 +61,7 @@ export default function DeadlineTable({ activeDigit }: Props) {
                       {day}{' '}
                       <span className={styles.tdMonth} aria-hidden="true">
                         {MONTHS_SHORT[pay.month]}
-                        {pay.year === 2027 ? ' 2027' : ''}
+                        {pay.year > ejercicio ? ` ${pay.year}` : ''}
                       </span>
                     </td>
                   ))}
@@ -69,7 +75,7 @@ export default function DeadlineTable({ activeDigit }: Props) {
         Incluye vencimientos del ITF. Base legal: Anexo I — Resolución de Superintendencia
         N° 281-2022/SUNAT.{' '}
         <a
-          href="https://www.sunat.gob.pe/orientacion/cronogramas/2026/cObligacionMensual2026.html"
+          href={`https://www.sunat.gob.pe/orientacion/cronogramas/${ejercicio}/cObligacionMensual${ejercicio}.html`}
           target="_blank"
           rel="noreferrer"
         >

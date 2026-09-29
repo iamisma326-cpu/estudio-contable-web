@@ -65,11 +65,15 @@ export const MONTHLY_SCHEDULE_2026: MonthRow[] = [
   { month: 11, year: 2026, deadlines: [18, 19, 20, 21, 22, 25, 26] },   // vence ene 2027
 ];
 
-/** Mes (0-11) en que vence cada período tributario del ejercicio 2026 */
-const PAYMENT_MONTH = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0];
+/** Mes (0-11) en que vence cada período tributario: el mes siguiente (dic -> ene) */
+function paymentMonthOf(periodMonth: number): number {
+  return (periodMonth + 1) % 12;
+}
 
-/** Año en que vence cada período (dic-2026 vence en enero 2027) */
-const PAYMENT_YEAR = [2026, 2026, 2026, 2026, 2026, 2026, 2026, 2026, 2026, 2026, 2026, 2027];
+/** Año en que vence un período: dic del ejercicio vence al año siguiente */
+function paymentYearOf(periodMonth: number, ejercicio: number): number {
+  return periodMonth === 11 ? ejercicio + 1 : ejercicio;
+}
 
 /** Grupo de dígito (0-5) o Buenos Contribuyentes (6) para un último dígito de RUC */
 export function digitGroupIndex(lastDigit: number): number {
@@ -110,14 +114,20 @@ function daysBetween(a: Date, b: Date): number {
  * de RUC o Buenos Contribuyentes (lastDigit = 10).
  *
  * Devuelve máximo 3: el mes en curso/entrante y los dos siguientes.
+ *
+ * @param schedule  Cronograma del ejercicio (por defecto, el embebido 2026)
  */
-export function upcomingDeadlines(lastDigit: number, limit = 3): UpcomingDeadline[] {
+export function upcomingDeadlines(
+  lastDigit: number,
+  limit = 3,
+  schedule: MonthRow[] = MONTHLY_SCHEDULE_2026
+): UpcomingDeadline[] {
   const col = columnIndex(lastDigit);
   const today = todayInLima();
 
-  const upcoming = MONTHLY_SCHEDULE_2026.flatMap((row) => {
-    const payMonth = PAYMENT_MONTH[row.month];
-    const payYear = PAYMENT_YEAR[row.month];
+  const upcoming = schedule.flatMap((row) => {
+    const payMonth = paymentMonthOf(row.month);
+    const payYear = paymentYearOf(row.month, row.year);
     const dueDate = new Date(payYear, payMonth, row.deadlines[col]);
     const daysLeft = daysBetween(today, dueDate);
     if (daysLeft < 0) return [];
@@ -128,17 +138,17 @@ export function upcomingDeadlines(lastDigit: number, limit = 3): UpcomingDeadlin
 }
 
 /** Fecha de vencimiento de un período tributario dado para un dígito */
-export function deadlineFor(periodMonth: number, lastDigit: number): Date {
-  const row = MONTHLY_SCHEDULE_2026[periodMonth];
+export function deadlineFor(periodMonth: number, lastDigit: number, schedule: MonthRow[] = MONTHLY_SCHEDULE_2026): Date {
+  const row = schedule[periodMonth];
   if (!row) throw new Error(`Mes de período inválido: ${periodMonth}`);
-  return new Date(PAYMENT_YEAR[row.month], PAYMENT_MONTH[row.month], row.deadlines[columnIndex(lastDigit)]);
+  return new Date(paymentYearOf(row.month, row.year), paymentMonthOf(row.month), row.deadlines[columnIndex(lastDigit)]);
 }
 
-/** Mes (0-11) y año en que vence un período tributario del ejercicio 2026 */
-export function paymentInfo(periodMonth: number): { month: number; year: number } {
-  const row = MONTHLY_SCHEDULE_2026[periodMonth];
+/** Mes (0-11) y año en que vence un período tributario del ejercicio */
+export function paymentInfo(periodMonth: number, schedule: MonthRow[] = MONTHLY_SCHEDULE_2026): { month: number; year: number } {
+  const row = schedule[periodMonth];
   if (!row) throw new Error(`Mes de período inválido: ${periodMonth}`);
-  return { month: PAYMENT_MONTH[row.month], year: PAYMENT_YEAR[row.month] };
+  return { month: paymentMonthOf(row.month), year: paymentYearOf(row.month, row.year) };
 }
 
 /** Formato largo peruano: "27 de abril de 2026" */

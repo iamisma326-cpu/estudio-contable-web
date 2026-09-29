@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
-import { MONTHLY_SCHEDULE_2026, MONTH_NAMES, paymentInfo, todayInLima } from '../data/sunatSchedule';
+import { MONTH_NAMES, paymentInfo, todayInLima, type MonthRow } from '../data/sunatSchedule';
+import { useSunatSchedule } from '../hooks/useSunatSchedule';
 import styles from '../styles/SeasonBanner.module.css';
 
 /**
@@ -26,11 +27,11 @@ interface Window {
 }
 
 /** Ventana de vencimientos que incluye HOY; null si hoy no hay vencimientos */
-function activeWindow(): Window | null {
+function activeWindow(rows: MonthRow[]): Window | null {
   const today = todayInLima();
 
-  for (const row of MONTHLY_SCHEDULE_2026) {
-    const pay = paymentInfo(row.month);
+  for (const row of rows) {
+    const pay = paymentInfo(row.month, rows);
     const dates = row.deadlines.map((d) => new Date(pay.year, pay.month, d));
     const from = new Date(Math.min(...dates.map((x) => x.getTime())));
     const to = new Date(Math.max(...dates.map((x) => x.getTime())));
@@ -54,7 +55,11 @@ function shortDate(d: Date): string {
 }
 
 export default function SeasonBanner() {
-  const win = useMemo(activeWindow, []);
+  const schedule = useSunatSchedule();
+  const win = useMemo(
+    () => activeWindow(schedule?.meses ?? []),
+    [schedule]
+  );
 
   if (!win) return null;
 
