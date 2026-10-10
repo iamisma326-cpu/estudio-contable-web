@@ -136,7 +136,7 @@ export default function Testimonials() {
                   aria-hidden={mode === 'marquee' && i >= testimonials.length ? true : undefined}
                 >
                   <Quote size={30} className={styles.quoteIcon} />
-                  <div className={styles.stars} aria-label="5 de 5 estrellas">
+                  <div className={styles.stars} role="img" aria-label="5 de 5 estrellas">
                     {Array.from({ length: 5 }).map((_, s) => (
                       <Star key={s} size={15} className={styles.star} fill="currentColor" />
                     ))}

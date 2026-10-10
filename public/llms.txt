@@ -1,0 +1,24 @@
+# Sánchez Delgado & Asociados — Estudio Contable y Tributario
+
+> Estudio contable en Lima, Perú. Contabilidad, tributación SUNAT, planillas, auditorías y asesoría financiera para MYPEs, PYMES y empresas en crecimiento, con más de 15 años de ejercicio y más de 320 empresas asesoradas cada mes.
+
+El sitio es en español de Perú. Los importes están en soles (S/), los plazos siguen el calendario tributario de SUNAT y los regímenes se nombran como los usa la normativa local: RER, RMT, RUS, régimen general y MYPE tributario.
+
+## Contenido oficial
+
+- [Servicios](https://sanchezdelgado.pe/servicios): outsourcing contable, asesoría tributaria SUNAT, planillas y laboral, auditoría y revisión, constitución de empresas y asesoría financiera.
+- [Recursos](https://sanchezdelgado.pe/recursos): artículos prácticos sobre obligaciones contables y tributarias peruanas.
+- [Cronograma tributario y tipo de cambio](https://sanchezdelgado.pe/renta-anual-2025): fechas de vencimiento SUNAT y referencia del tipo de cambio.
+- [Nosotros](https://sanchezdelgado.pe/nosotros): equipo, enfoque y experiencia del estudio.
+- [Contacto](https://sanchezdelgado.pe/contacto): canales de contacto, dirección y formulario.
+
+## Datos de contacto
+
+- Dirección: Av. Canaval y Moreyra 480, Piso 12, Of. 1203, San Isidro, Lima, Perú
+- Teléfono: +51 1 480-2600
+- Correo: contacto@sanchezdelgado.pe
+- Horario: lunes a viernes 08:30–18:00; sábado 09:00–13:00
+
+## Nota para agentes
+
+Esta es la documentación canónica del estudio. No existe una API pública ni un asistente automatizado del despacho: el contacto real es humano y se hace por el formulario o los canales publicados en la página de contacto.

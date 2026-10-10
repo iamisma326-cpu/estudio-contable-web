@@ -70,8 +70,8 @@ export default function Hero() {
             .from(targets, { opacity: 0, yPercent: 105, duration: 0.75, stagger: 0.055 }, '-=0.35')
             .from('.heroSubtitle', { opacity: 0, y: 22, duration: 0.65 }, '-=0.5')
             .from('.heroCta > *', { opacity: 0, y: 18, duration: 0.55, stagger: 0.08 }, '-=0.45')
-            .from('.stat', { opacity: 0, y: 20, duration: 0.6, stagger: 0.09 }, '-=0.4')
-            .from('.statDivider', { scaleY: 0, duration: 0.5, stagger: 0.09 }, '<0.1');
+            .from('.heroStat', { opacity: 0, y: 20, duration: 0.6, stagger: 0.09 }, '-=0.4')
+            .from('.heroStatDivider', { scaleY: 0, duration: 0.5, stagger: 0.09 }, '<0.1');
 
           // Parallax muy leve del halo: da profundidad sin robar lectura.
           // Sólo si hay sitio para moverlo; en móvil el halo se queda quieto.
@@ -133,17 +133,17 @@ export default function Hero() {
         </div>
 
         <dl className={styles.stats}>
-          <div className={styles.stat}>
+          <div className={`${styles.stat} heroStat`}>
             <dt>Más de <Counter to={15} /> años</dt>
             <dd>de experiencia en el Perú</dd>
           </div>
-          <span className={styles.statDivider} aria-hidden="true" />
-          <div className={styles.stat}>
+          <span className={`${styles.statDivider} heroStatDivider`} aria-hidden="true" />
+          <div className={`${styles.stat} heroStat`}>
             <dt><Counter to={320} prefix="+" /> empresas</dt>
             <dd>asesoradas cada mes</dd>
           </div>
-          <span className={styles.statDivider} aria-hidden="true" />
-          <div className={styles.stat}>
+          <span className={`${styles.statDivider} heroStatDivider`} aria-hidden="true" />
+          <div className={`${styles.stat} heroStat`}>
             <dt><Counter to={98} /> % puntualidad</dt>
             <dd>en declaraciones SUNAT</dd>
           </div>

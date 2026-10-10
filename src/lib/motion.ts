@@ -64,13 +64,28 @@ export default { REVEAL, CLIP, PARALLAX, COUNT, SPLASH };
 
 export const INTRO_DONE_EVENT = 'sd:intro-done';
 
+/**
+ * La intro puede terminar ANTES de que el Hero se suscriba: en móvil el
+ * splash no se monta y dispara la señal desde su layout effect, que corre
+ * antes que los `useEffect` del Hero. Sin este flag, el Hero perdía el
+ * evento y esperaba los 1900 ms del respaldo: la entrada del título se
+ * retrasaba y su repintado movía el LCP hasta ~3,7 s. Con el flag, el que
+ * llega tarde recibe la señal igual.
+ */
+let introDone = false;
+
 /** Avisa a los oyentes de que la intro terminó (o no llegó a existir). */
 export function signalIntroDone() {
+  introDone = true;
   window.dispatchEvent(new Event(INTRO_DONE_EVENT));
 }
 
-/** Se suscribe a la señal. Devuelve la función para desuscribirse. */
+/** Se suscribe a la señal. Si ya se emitió, llama al instante. */
 export function onIntroDone(cb: () => void): () => void {
+  if (introDone) {
+    cb();
+    return () => {};
+  }
   window.addEventListener(INTRO_DONE_EVENT, cb, { once: true });
   return () => window.removeEventListener(INTRO_DONE_EVENT, cb);
 }

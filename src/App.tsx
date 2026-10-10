@@ -1,11 +1,11 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import { ScrollTrigger } from './lib/gsap';
 
-// Lazy-loaded pages — each becomes its own chunk
+// Páginas con carga perezosa: cada una es su propio chunk
 const Home = lazy(() => import('./pages/Home'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ServicesPage = lazy(() => import('./pages/ServicesPage'));
@@ -22,17 +22,33 @@ function PageLoader() {
   );
 }
 
-export default function App() {
-  /* La altura de cada ruta es distinta: sin refrescar, los triggers que
-     nacen cerca del final de la página miden contra el documento anterior. */
-  useEffect(() => {
-    const id = window.setTimeout(() => ScrollTrigger.refresh(), 120);
-    return () => window.clearTimeout(id);
-  });
+/**
+ * Cada ruta tiene una altura distinta y el navegador no dispara `resize`,
+ * así que los triggers calculados contra el documento anterior se quedan
+ * desfasados. Dos pasadas: la primera llega cuando la ruta casi siempre ya
+ * montó; la segunda cubre el caso en que el chunk perezoso de la página
+ * aterriza después. `refresh` es barato, no vale la pena una sincronía fina.
+ */
+function ScrollTriggerSync() {
+  const { pathname } = useLocation();
 
+  useEffect(() => {
+    const fast = window.setTimeout(() => ScrollTrigger.refresh(), 120);
+    const slow = window.setTimeout(() => ScrollTrigger.refresh(), 900);
+    return () => {
+      window.clearTimeout(fast);
+      window.clearTimeout(slow);
+    };
+  }, [pathname]);
+
+  return null;
+}
+
+export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <ScrollTriggerSync />
       <div id="app-root">
         <Header />
         {/* tabIndex -1: es el destino del foco al cambiar de ruta */}

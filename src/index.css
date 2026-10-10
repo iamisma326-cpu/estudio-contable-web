@@ -8,6 +8,34 @@
    fluidos de abajo. No escribir padding de sección en píxeles.
    ============================================================ */
 
+/* ---------- Fuentes auto-alojadas ----------
+   Subconjunto latino, servidas desde /public/fonts con preload en index.html.
+   Antes cargaban desde Google Fonts: tres peticiones extra (DNS+TLS+CSS),
+   render-blocking encubierto y datos del usuario fuera del sitio.
+   Libre Baskerville (400/700) y Source Sans 3 (400–700) son variables: una
+   sola cubre todo el rango; la cursiva de Baskerville es estática. */
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/libre-baskerville-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Libre Baskerville';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/libre-baskerville-italic-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Source Sans 3';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/source-sans-3-latin.woff2') format('woff2');
+}
+
 :root {
   /* ---------- Paleta corporativa ---------- */
   --color-primary: #0B1432;          /* Azul noche — marca */

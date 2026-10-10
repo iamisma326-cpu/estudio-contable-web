@@ -53,6 +53,27 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      // es2022: Vite deja de emitir el polyfill de modulepreload y compacta
+      // mejor optional chaining/nullish. Lo soportan todos los navegadores
+      // con share de ES modules, que es el único público que sirve un
+      // `type="module"`.
+      target: 'es2022',
+      rollupOptions: {
+        output: {
+          // El chunk de entrada mezclaba react-dom (~630 KB fuente), GSAP
+          // (~380 KB) y el router en un solo archivo: cualquier cambio del
+          // sitio revalidaba todo y la cachecita de vendor se perdía.
+          // Separarlos además permite cachear cada uno con su cabecera.
+          manualChunks(id: string) {
+            if (!id.includes('node_modules')) return;
+            if (/node_modules\/(@gsap|gsap)\//.test(id)) return 'gsap';
+            if (/node_modules\/react-router/.test(id)) return 'router';
+            if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'react';
+          },
+        },
+      },
+    },
     server: {
       port: 3000,
       host: '0.0.0.0',
