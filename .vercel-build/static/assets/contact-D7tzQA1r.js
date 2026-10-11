@@ -1,2 +1,0 @@
-const s="51922375598",n="+51 922 375 598";function i(e){const o=`https://wa.me/${s}`;return e?`${o}?text=${encodeURIComponent(e)}`:o}const c="Hola Sánchez Delgado & Asociados, quisiera información sobre sus servicios.";function r(e){const o=["Hola Sánchez Delgado & Asociados, solicito un diagnóstico.","",`• Nombre: ${e.nombre}`,`• Email: ${e.email}`,`• Teléfono: ${e.telefono}`];return e.empresa&&o.push(`• Empresa: ${e.empresa}`),o.push(`• Servicio de interés: ${e.servicio}`,"","Mensaje:",e.mensaje),o.join(`
-`)}export{c as W,n as a,r as b,i as w};

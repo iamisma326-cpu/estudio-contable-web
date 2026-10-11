@@ -8,3 +8,4 @@ dev.log
 .playwright-mcp
 .vercel
 .env*
+.vercel-build/
