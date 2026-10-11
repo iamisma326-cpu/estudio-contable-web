@@ -6,3 +6,5 @@ dev.log
 *.local
 .DS_Store
 .playwright-mcp
+.vercel
+.env*
