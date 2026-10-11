@@ -5,8 +5,8 @@
  * El frontend lo usa como guard de la ruta /admin.
  */
 
-import type { ReqLike, ResLike } from '../_admin/auth';
-import { verifyCookie } from '../_admin/auth';
+import type { ReqLike, ResLike } from '../_admin/auth.js';
+import { verifyCookie } from '../_admin/auth.js';
 
 export default async function handler(req: ReqLike, res: ResLike): Promise<void> {
   const origin = req.headers?.['origin'];

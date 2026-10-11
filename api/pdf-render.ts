@@ -17,10 +17,10 @@
  * Autenticación: cookie admin (mismo patrón que /api/admin/*).
  */
 
-import type { ReqLike, ResLike } from './_admin/auth';
-import { verifyCookie, readJsonBody } from './_admin/auth';
+import type { ReqLike, ResLike } from './_admin/auth.js';
+import { verifyCookie, readJsonBody } from './_admin/auth.js';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { findTextCoords } from './_pdf/text';
+import { findTextCoords } from './_pdf/text.js';
 
 interface ReplaceOp {
   page: number;

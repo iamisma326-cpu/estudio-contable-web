@@ -2,6 +2,7 @@
   "name": "estudio-contable-web",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "predev": "node -e \"try{require('vite')}catch(e){process.exit(1)}\" || npm install",
     "dev": "vite --port=3000 --host=0.0.0.0",

@@ -10,8 +10,8 @@
  * (Firewall) o un middleware externo en producción.
  */
 
-import type { ReqLike, ResLike } from '../_admin/auth';
-import { adminUser, adminPassword, makeCookieValue, serializeCookie, readJsonBody, verifyCookie } from '../_admin/auth';
+import type { ReqLike, ResLike } from '../_admin/auth.js';
+import { adminUser, adminPassword, makeCookieValue, serializeCookie, readJsonBody, verifyCookie } from '../_admin/auth.js';
 
 function safeEqual(a: string, b: string): boolean {
   // Duplicado local para no exportar crypto desde el módulo de auth en cada

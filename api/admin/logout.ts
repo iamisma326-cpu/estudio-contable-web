@@ -4,8 +4,8 @@
  * Idempotente: siempre devuelve 200.
  */
 
-import type { ReqLike, ResLike } from '../_admin/auth';
-import { clearCookieHeader } from '../_admin/auth';
+import type { ReqLike, ResLike } from '../_admin/auth.js';
+import { clearCookieHeader } from '../_admin/auth.js';
 
 export default async function handler(req: ReqLike, res: ResLike): Promise<void> {
   const origin = req.headers?.['origin'];

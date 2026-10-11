@@ -22,9 +22,9 @@
  *   - respuesta cacheable no (cada request es único).
  */
 
-import type { ReqLike, ResLike } from './_admin/auth';
-import { verifyCookie, readJsonBody } from './_admin/auth';
-import { extractPdfTextPerPage } from './_pdf/text';
+import type { ReqLike, ResLike } from './_admin/auth.js';
+import { verifyCookie, readJsonBody } from './_admin/auth.js';
+import { extractPdfTextPerPage } from './_pdf/text.js';
 
 const GOOGLE_MODEL = 'gemini-3.8-flash';
 const GROQ_MODEL = 'openai/gpt-oss-120b';
