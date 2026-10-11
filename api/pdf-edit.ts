@@ -16,7 +16,8 @@
  * Autenticación: requiere cookie admin válida (mismo patrón que /api/admin/*).
  *
  * Límites:
- *   - pdfBase64 hasta ~8 MB (PDF serverless típico: 1-3 MB).
+ *   - pdfBase64 hasta ~3 MB de PDF (base64 ~4 MB): Vercel rechaza
+ *     bodies >4.5 MB con 413 FUNCTION_PAYLOAD_TOO_LARGE.
  *   - instrucción hasta 4000 chars.
  *   - respuesta cacheable no (cada request es único).
  */
@@ -246,7 +247,7 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     res.status(400).json({ ok: false, error: 'not_a_pdf' });
     return;
   }
-  if (pdfBuffer.length > 8 * 1024 * 1024) {
+  if (pdfBuffer.length > 3 * 1024 * 1024) {
     res.status(413).json({ ok: false, error: 'pdf_too_large' });
     return;
   }

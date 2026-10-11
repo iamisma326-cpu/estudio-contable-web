@@ -58,7 +58,10 @@ interface EditResponse {
 }
 
 const DEBOUNCE_MS = 600;
-const MAX_BYTES = 8 * 1024 * 1024;
+// Techo real en Vercel: el body viaja como base64 (×4/3) y Vercel rechaza
+// payloads >4.5 MB (413 FUNCTION_PAYLOAD_TOO_LARGE). 3 MB de PDF ≈ 4 MB de
+// payload, dentro del límite con margen.
+const MAX_BYTES = 3 * 1024 * 1024;
 
 function readFileAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -277,7 +280,7 @@ export default function PDFEditor() {
                   <Upload size={32} />
                   <span className={styles.dropzoneTitle}>Suelta el PDF aquí</span>
                   <span className={styles.dropzoneHint}>
-                    o haz clic para elegir un archivo · máx. 8 MB
+                    o haz clic para elegir un archivo · máx. 3 MB
                   </span>
                 </>
               )}
