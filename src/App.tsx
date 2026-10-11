@@ -12,6 +12,8 @@ const ServicesPage = lazy(() => import('./pages/ServicesPage'));
 const ResourcesPage = lazy(() => import('./pages/ResourcesPage'));
 const RentaPage = lazy(() => import('./pages/RentaPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
 
 function PageLoader() {
   return (
@@ -50,7 +52,7 @@ export default function App() {
       <ScrollToTop />
       <ScrollTriggerSync />
       <div id="app-root">
-        <Header />
+        <ChromeChrome />
         {/* tabIndex -1: es el destino del foco al cambiar de ruta */}
         <main id="contenido" tabIndex={-1}>
           <Suspense fallback={<PageLoader />}>
@@ -61,12 +63,30 @@ export default function App() {
               <Route path="/recursos" element={<ResourcesPage />} />
               <Route path="/renta-anual-2025" element={<RentaPage />} />
               <Route path="/contacto" element={<ContactPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/admin" element={<AdminPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
         </main>
-        <Footer />
+        <ChromeFooter />
       </div>
     </BrowserRouter>
   );
+}
+
+/**
+ * En /login y /admin ocultamos la cabecera y el pie del sitio: la
+ * experiencia interna no debe parecerse al marketing público.
+ */
+function ChromeChrome() {
+  const { pathname } = useLocation();
+  if (pathname === '/login' || pathname === '/admin') return null;
+  return <Header />;
+}
+
+function ChromeFooter() {
+  const { pathname } = useLocation();
+  if (pathname === '/login' || pathname === '/admin') return null;
+  return <Footer />;
 }

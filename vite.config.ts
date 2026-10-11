@@ -1,12 +1,17 @@
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, loadEnv} from 'vite';
 
 // La misma lógica que api/*.ts (serverless de Vercel), reutilizada
 // en desarrollo para que /api/* exista también en `npm run dev`.
 import tipoCambio from './api/tipo-cambio';
 import cronograma from './api/cronograma';
 import rentaAnual from './api/renta-anual';
+import adminLogin from './api/admin/login';
+import adminLogout from './api/admin/logout';
+import adminSession from './api/admin/session';
+import pdfEdit from './api/pdf-edit';
+import pdfRender from './api/pdf-render';
 
 /** Shape que esperan los handlers de api/ (espejo de ResLike en cada uno) */
 interface DevRes {
@@ -16,7 +21,16 @@ interface DevRes {
   end(body?: string): DevRes;
 }
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  // Los handlers serverless leen process.env.GOOGLE_AI_API_KEY / GROQ_API_KEY.
+  // En Vercel llegan del dashboard; en dev, loadEnv las trae de .env al
+  // process.env para que el middleware de /api/* los vea igual que prod.
+  const env = loadEnv(mode, process.cwd(), '');
+  for (const [k, v] of Object.entries(env)) {
+    if (k.startsWith('GOOGLE_') || k.startsWith('GROQ_') || k.startsWith('ADMIN_')) {
+      process.env[k] = v;
+    }
+  }
   return {
     plugins: [
       react(),
@@ -26,9 +40,33 @@ export default defineConfig(() => {
         // shape que esperan los handlers con un objeto devuelto fluido.
         name: 'api-dev-middleware',
         configureServer(server) {
+          // Connect (el server de Vite) NO parsea el body: en Vercel req.body
+          // llega como objeto (bodyParser automático), pero en dev llega
+          // undefined y los handlers que usan readJsonBody ven null. Este
+          // wrapper lo reconstruye a mano para que dev == prod.
+          const readBody = (req: { method?: string; headers?: Record<string, unknown>; on?: unknown; body?: unknown }): Promise<unknown> =>
+            new Promise((resolve) => {
+              if (req.body !== undefined && req.body !== null) {
+                resolve(req.body);
+                return;
+              }
+              const chunks: Buffer[] = [];
+              const r = req as unknown as {
+                on(ev: string, cb: (d?: Buffer) => void): void;
+                headers?: Record<string, string | string[] | undefined>;
+              };
+              r.on('data', (d?: Buffer) => { if (d) chunks.push(d); });
+              r.on('end', () => {
+                const raw = Buffer.concat(chunks).toString('utf8');
+                if (!raw) { resolve(null); return; }
+                try { resolve(JSON.parse(raw)); } catch { resolve(null); }
+              });
+              r.on('error', () => resolve(null));
+            });
+
           const bridge =
             (handler: (req: { method?: string }, res: DevRes) => Promise<void>) =>
-            (req: { method?: string }, res: {
+            async (req: { method?: string }, res: {
               setHeader(k: string, v: string): void;
               statusCode: number;
               end(body?: string): void;
@@ -39,12 +77,21 @@ export default defineConfig(() => {
                 json(body) { res.end(JSON.stringify(body)); return adapted; },
                 end(body) { res.end(body); return adapted; },
               };
-              handler(req, adapted);
+              const hasBody = req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH';
+              if (hasBody) {
+                (req as { body?: unknown }).body = await readBody(req);
+              }
+              await handler(req, adapted);
             };
 
           server.middlewares.use('/api/tipo-cambio', bridge(tipoCambio));
           server.middlewares.use('/api/cronograma', bridge(cronograma));
           server.middlewares.use('/api/renta-anual', bridge(rentaAnual));
+          server.middlewares.use('/api/admin/login', bridge(adminLogin));
+          server.middlewares.use('/api/admin/logout', bridge(adminLogout));
+          server.middlewares.use('/api/admin/session', bridge(adminSession));
+          server.middlewares.use('/api/pdf-edit', bridge(pdfEdit));
+          server.middlewares.use('/api/pdf-render', bridge(pdfRender));
         },
       },
     ],

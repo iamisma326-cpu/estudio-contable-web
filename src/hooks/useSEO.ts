@@ -17,6 +17,8 @@ interface SEOData {
   breadcrumb?: Crumb[];
   /** Preguntas para inyectar un FAQPage de schema.org (rich results). */
   faq?: { q: string; a: string }[];
+  /** Marca la página como noindex (login, admin, 404 internas). */
+  noindex?: boolean;
 }
 
 const SITE = 'https://sanchezdelgado.pe';
@@ -70,6 +72,16 @@ export default function useSEO(data: SEOData) {
     }
     link.setAttribute('href', canonicalUrl);
     setMeta('property', 'og:url', canonicalUrl);
+
+    if (meta.noindex) {
+      let robots = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
+      if (!robots) {
+        robots = document.createElement('meta');
+        robots.setAttribute('name', 'robots');
+        document.head.appendChild(robots);
+      }
+      robots.setAttribute('content', 'noindex, nofollow');
+    }
 
     // --- BreadcrumbList ---
     const existing = document.getElementById(BREADCRUMB_ID);
@@ -134,6 +146,7 @@ export default function useSEO(data: SEOData) {
     meta.canonical,
     meta.keywords,
     meta.faq,
+    meta.noindex,
     breadcrumb,
   ]);
 }

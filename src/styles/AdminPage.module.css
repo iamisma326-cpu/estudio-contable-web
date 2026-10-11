@@ -1,0 +1,96 @@
+/* ===== AdminPage ===== */
+
+.page {
+  min-height: 100vh;
+  background: var(--color-bg-light);
+  padding-top: var(--header-offset);
+}
+
+.loading {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--color-text-muted);
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid rgba(11, 20, 50, 0.1);
+  border-top-color: var(--color-primary);
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.topbar {
+  background: var(--color-primary-deep);
+  color: rgba(236, 237, 239, 0.9);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.topbarInner {
+  max-width: var(--container-wide);
+  margin-inline: auto;
+  padding: 14px var(--gutter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.greeting {
+  font-size: 0.92rem;
+}
+
+.greeting strong {
+  color: var(--color-accent-soft);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.backLink {
+  color: rgba(236, 237, 239, 0.75);
+  font-size: 0.88rem;
+  transition: color var(--transition-speed) ease;
+}
+
+.backLink:hover {
+  color: #fff;
+}
+
+.logoutBtn {
+  height: 36px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid rgba(236, 237, 239, 0.3);
+  border-radius: 8px;
+  color: rgba(236, 237, 239, 0.9);
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: background var(--transition-speed) ease, border-color var(--transition-speed) ease;
+}
+
+.logoutBtn:hover {
+  background: rgba(236, 237, 239, 0.08);
+  border-color: rgba(236, 237, 239, 0.6);
+}
+
+.content {
+  padding: 32px var(--gutter) 64px;
+}

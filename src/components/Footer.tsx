@@ -58,6 +58,9 @@ export default function Footer() {
               {l.label}
             </Link>
           ))}
+          <Link to="/login" className={styles.navLink} aria-label="Acceso administrativo">
+            Acceso admin
+          </Link>
         </nav>
 
         <div className={styles.social} data-reveal>
