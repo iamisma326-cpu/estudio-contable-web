@@ -319,6 +319,104 @@ export function findTextCoords(
 }
 
 /**
+ * Posición para ESCRIBIR texto nuevo anclado al final de una etiqueta.
+ * Encuentra la línea que contiene `anchor` (ej: "Nombre:") y devuelve
+ * coordenadas justo después del final de esa línea, sobre la misma
+ * baseline. Si la línea termina antes del margen, el valor se escribe
+ * al costado derecho de la etiqueta; si el anchor es el último texto de
+ * la línea, se escribe inmediatamente después.
+ *
+ * offsetX/offsetY permiten ajustar fino (líneas de subrayado, etc.).
+ */
+export function findAnchorCoords(
+  page: PdfPage,
+  anchor: string,
+  measure: { widthOfTextAtSize: (s: string, n: number) => number },
+  opts?: { offsetX?: number; offsetY?: number }
+): { x: number; y: number; size: number } | null {
+  if (page.getRotation().angle !== 0) return null;
+  const items = extractTextItems(page, measure);
+  if (!items.length) return null;
+
+  interface Line { text: string; items: TextItem[]; y: number }
+  const lines: Line[] = [];
+  const sorted = [...items].sort((a, b) => a.y - b.y);
+  for (const it of sorted) {
+    const last = lines[lines.length - 1];
+    if (last && Math.abs(last.y - it.y) < 2) {
+      last.text += (last.text && !last.text.endsWith(' ') ? ' ' : '') + it.str;
+      last.items.push(it);
+    } else {
+      lines.push({ text: it.str, items: [it], y: it.y });
+    }
+  }
+
+  const target = lines.find((l) => l.text.includes(anchor));
+  if (!target) return null;
+
+  const idx = target.text.indexOf(anchor);
+  const after = idx + anchor.length;
+  // Item que contiene el último char del anchor: su x final es el punto
+  // de partida para escribir.
+  let acc = 0;
+  let endX = target.items[0].x;
+  let baselineY = target.items[0].y;
+  let size = target.items[0].size;
+  for (const it of target.items) {
+    const itemStart = acc;
+    const itemEnd = acc + it.str.length;
+    if (itemEnd >= after && itemStart < after) {
+      const overlapEnd = after - itemStart;
+      endX = it.x + measure.widthOfTextAtSize(it.str.slice(0, overlapEnd), it.size || size);
+      baselineY = it.y;
+      size = it.size || size;
+      break;
+    }
+    acc += it.str.length + 1;
+  }
+
+  const gap = 6; // aire entre la etiqueta y el valor
+  return {
+    x: endX + gap + (opts?.offsetX ?? 0),
+    y: baselineY + (opts?.offsetY ?? 0),
+    size,
+  };
+}
+
+/**
+ * Detecta campos de formulario (AcroForm) del PDF: nombre, tipo y valor
+ * actual. Devuelve [] si el PDF no tiene campos. El LLM usa esta lista
+ * para decidir entre llenar campos reales (fields) vs insertar texto
+ * (fills) en formularios impresos sin campos.
+ */
+export function extractFormFields(pdfDoc: PDFDocument): Array<{ name: string; type: string; value: string }> {
+  try {
+    const form = pdfDoc.getForm();
+    const fields = form.getFields();
+    return fields.map((f) => {
+      const name = f.getName();
+      const ctor = f.constructor.name;
+      let type = 'text';
+      if (ctor.includes('CheckBox')) type = 'checkbox';
+      else if (ctor.includes('RadioGroup')) type = 'radio';
+      else if (ctor.includes('DropDown')) type = 'dropdown';
+      else if (ctor.includes('OptionList')) type = 'list';
+      let value = '';
+      try {
+        if (type === 'checkbox') value = (form.getCheckBox(name)).isChecked() ? 'true' : 'false';
+        else if (type === 'text') value = form.getTextField(name).getText() || '';
+        else if (type === 'dropdown') value = form.getDropdown(name).getSelected()[0] || '';
+      } catch {
+        value = '';
+      }
+      return { name, type, value };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Extrae el texto de todas las páginas con su número, listo para meter al
  * prompt del LLM. Devuelve un string con marcadores "=== PÁGINA n ===".
  *

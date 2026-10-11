@@ -49,10 +49,26 @@ interface ReplaceOp {
   cover?: boolean;
 }
 
+interface FillOp {
+  page: number;
+  anchor: string;
+  value: string;
+  offsetX?: number;
+  offsetY?: number;
+}
+
+interface FieldOp {
+  name: string;
+  value: string;
+  type?: 'text' | 'checkbox' | 'dropdown';
+}
+
 interface EditResponse {
   ok: boolean;
   provider?: 'google' | 'groq';
   replaces?: ReplaceOp[];
+  fills?: FillOp[];
+  fields?: FieldOp[];
   notes?: string;
   error?: string;
 }
@@ -87,6 +103,8 @@ export default function PDFEditor() {
   const [instruction, setInstruction] = useState('');
   const [pageHint, setPageHint] = useState('');
   const [replaces, setReplaces] = useState<ReplaceOp[]>([]);
+  const [fills, setFills] = useState<FillOp[]>([]);
+  const [fields, setFields] = useState<FieldOp[]>([]);
   const [notes, setNotes] = useState('');
   const [provider, setProvider] = useState<'google' | 'groq' | null>(null);
   const [busy, setBusy] = useState(false);
@@ -112,6 +130,8 @@ export default function PDFEditor() {
     setPdfBase64(b64);
     setPdfDataUrl(`data:application/pdf;base64,${b64}`);
     setReplaces([]);
+    setFills([]);
+    setFields([]);
     setNotes('');
   }, []);
 
@@ -131,6 +151,8 @@ export default function PDFEditor() {
   useEffect(() => {
     if (!pdfBase64 || !instruction.trim()) {
       setReplaces([]);
+      setFills([]);
+      setFields([]);
       setNotes('');
       setProvider(null);
       return;
@@ -170,6 +192,8 @@ export default function PDFEditor() {
         return;
       }
       setReplaces(Array.isArray(data.replaces) ? data.replaces : []);
+      setFills(Array.isArray(data.fills) ? data.fills : []);
+      setFields(Array.isArray(data.fields) ? data.fields : []);
       setNotes(data.notes || '');
       setProvider(data.provider || null);
     } catch {
@@ -181,7 +205,7 @@ export default function PDFEditor() {
   }, []);
 
   const applyChanges = useCallback(async () => {
-    if (!pdfBase64 || replaces.length === 0) return;
+    if (!pdfBase64 || (replaces.length === 0 && fills.length === 0 && fields.length === 0)) return;
     setRendering(true);
     setError(null);
     try {
@@ -189,7 +213,7 @@ export default function PDFEditor() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ pdfBase64, ops: replaces }),
+        body: JSON.stringify({ pdfBase64, ops: replaces, fills, fields }),
       });
       if (!res.ok) {
         const detail = await res.json().catch(() => ({}));
@@ -215,25 +239,35 @@ export default function PDFEditor() {
     } finally {
       setRendering(false);
     }
-  }, [file, pdfBase64, replaces]);
+  }, [file, pdfBase64, replaces, fills, fields]);
 
   const removeOp = (idx: number) => {
     setReplaces((prev) => prev.filter((_, i) => i !== idx));
+  };
+  const removeFill = (idx: number) => {
+    setFills((prev) => prev.filter((_, i) => i !== idx));
+  };
+  const updateFill = (idx: number, patch: Partial<FillOp>) => {
+    setFills((prev) => prev.map((o, i) => (i === idx ? { ...o, ...patch } : o)));
+  };
+  const removeField = (idx: number) => {
+    setFields((prev) => prev.filter((_, i) => i !== idx));
+  };
+  const updateField = (idx: number, patch: Partial<FieldOp>) => {
+    setFields((prev) => prev.map((o, i) => (i === idx ? { ...o, ...patch } : o)));
   };
   const updateOp = (idx: number, patch: Partial<ReplaceOp>) => {
     setReplaces((prev) => prev.map((o, i) => (i === idx ? { ...o, ...patch } : o)));
   };
 
   const stats = useMemo(() => {
-    return replaces.reduce(
-      (acc, r) => {
-        acc.count += 1;
-        acc.pages.add(r.page);
-        return acc;
-      },
-      { count: 0, pages: new Set<number>() }
-    );
-  }, [replaces]);
+    const pages = new Set<number>();
+    let count = 0;
+    for (const r of replaces) { count += 1; pages.add(r.page); }
+    for (const f of fills) { count += 1; pages.add(f.page); }
+    for (const fd of fields) { count += 1; }
+    return { count, pages };
+  }, [replaces, fills, fields]);
 
   return (
     <div className={styles.shell}>
@@ -361,7 +395,7 @@ export default function PDFEditor() {
         <div className={styles.opsPanel}>
           <header className={styles.opsHeader}>
             <h2 className={styles.opsTitle}>Cambios propuestos</h2>
-            {replaces.length > 0 && (
+            {(replaces.length + fills.length + fields.length) > 0 && (
               <button
                 type="button"
                 onClick={applyChanges}
@@ -385,7 +419,7 @@ export default function PDFEditor() {
             <p className={styles.notes}>{notes}</p>
           )}
 
-          {replaces.length === 0 && !busy && !error && (
+          {replaces.length + fills.length + fields.length === 0 && !busy && !error && (
             <p className={styles.empty}>
               Aún no hay reemplazos. Escribe una instrucción para empezar.
             </p>
@@ -436,6 +470,92 @@ export default function PDFEditor() {
               </li>
             ))}
           </ul>
+
+          {fills.length > 0 && (
+            <>
+              <h3 className={styles.opsTitle}>Completar espacios</h3>
+              <ul className={styles.opsList}>
+                {fills.map((op, idx) => (
+                  <li key={`f${idx}`} className={styles.opItem}>
+                    <div className={styles.opHead}>
+                      <span className={styles.opPage}>Pág. {op.page}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeFill(idx)}
+                        className={styles.opRemove}
+                        aria-label="Quitar este relleno"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <div className={styles.opFields}>
+                      <label className={styles.opField}>
+                        <span>Después de (etiqueta)</span>
+                        <input
+                          type="text"
+                          value={op.anchor}
+                          onChange={(e) => updateFill(idx, { anchor: e.target.value })}
+                          className={styles.opInput}
+                        />
+                      </label>
+                      <label className={styles.opField}>
+                        <span>Escribir</span>
+                        <input
+                          type="text"
+                          value={op.value}
+                          onChange={(e) => updateFill(idx, { value: e.target.value })}
+                          className={styles.opInput}
+                        />
+                      </label>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {fields.length > 0 && (
+            <>
+              <h3 className={styles.opsTitle}>Campos del formulario</h3>
+              <ul className={styles.opsList}>
+                {fields.map((op, idx) => (
+                  <li key={`fd${idx}`} className={styles.opItem}>
+                    <div className={styles.opHead}>
+                      <span className={styles.opPage}>{op.type === 'checkbox' ? 'Casilla' : op.type === 'dropdown' ? 'Lista' : 'Campo'}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeField(idx)}
+                        className={styles.opRemove}
+                        aria-label="Quitar este campo"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <div className={styles.opFields}>
+                      <label className={styles.opField}>
+                        <span>Nombre del campo</span>
+                        <input
+                          type="text"
+                          value={op.name}
+                          onChange={(e) => updateField(idx, { name: e.target.value })}
+                          className={styles.opInput}
+                        />
+                      </label>
+                      <label className={styles.opField}>
+                        <span>Valor</span>
+                        <input
+                          type="text"
+                          value={op.value}
+                          onChange={(e) => updateField(idx, { value: e.target.value })}
+                          className={styles.opInput}
+                        />
+                      </label>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -20,7 +20,7 @@
 import type { ReqLike, ResLike } from './_admin/auth.js';
 import { verifyCookie, readJsonBody } from './_admin/auth.js';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { findTextCoords } from './_pdf/text.js';
+import { findTextCoords, findAnchorCoords } from './_pdf/text.js';
 
 interface ReplaceOp {
   page: number;
@@ -29,9 +29,27 @@ interface ReplaceOp {
   cover?: boolean;
 }
 
+/** Escribir texto nuevo anclado a una etiqueta existente. */
+interface FillOp {
+  page: number;
+  anchor: string;
+  value: string;
+  offsetX?: number;
+  offsetY?: number;
+}
+
+/** Llenar campo AcroForm por nombre. */
+interface FieldOp {
+  name: string;
+  value: string;
+  type?: 'text' | 'checkbox' | 'dropdown';
+}
+
 interface RenderRequest {
   pdfBase64?: unknown;
   ops?: unknown;
+  fills?: unknown;
+  fields?: unknown;
 }
 
 /* ===== Handler ===== */
@@ -59,6 +77,8 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
   const body = (await readJsonBody(req)) as RenderRequest | null;
   const pdfBase64 = typeof body?.pdfBase64 === 'string' ? body.pdfBase64 : '';
   const opsRaw = Array.isArray(body?.ops) ? body!.ops : [];
+  const fillsRaw = Array.isArray(body?.fills) ? body!.fills : [];
+  const fieldsRaw = Array.isArray(body?.fields) ? body!.fields : [];
 
   if (!pdfBase64) {
     res.status(400).json({ ok: false, error: 'pdf_required' });
@@ -80,6 +100,37 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
       });
     }
   }
+  const fills: FillOp[] = [];
+  for (const f of fillsRaw) {
+    if (
+      f && typeof f === 'object' &&
+      typeof (f as FillOp).page === 'number' &&
+      typeof (f as FillOp).anchor === 'string' &&
+      typeof (f as FillOp).value === 'string'
+    ) {
+      fills.push({
+        page: Math.max(1, Math.floor((f as FillOp).page)),
+        anchor: (f as FillOp).anchor,
+        value: (f as FillOp).value,
+        offsetX: typeof (f as FillOp).offsetX === 'number' ? (f as FillOp).offsetX : undefined,
+        offsetY: typeof (f as FillOp).offsetY === 'number' ? (f as FillOp).offsetY : undefined,
+      });
+    }
+  }
+  const fields: FieldOp[] = [];
+  for (const f of fieldsRaw) {
+    if (
+      f && typeof f === 'object' &&
+      typeof (f as FieldOp).name === 'string' &&
+      typeof (f as FieldOp).value === 'string'
+    ) {
+      fields.push({
+        name: (f as FieldOp).name,
+        value: (f as FieldOp).value,
+        type: (f as FieldOp).type === 'checkbox' || (f as FieldOp).type === 'dropdown' ? (f as FieldOp).type : 'text',
+      });
+    }
+  }
 
   let pdfBuffer: Buffer;
   try {
@@ -94,6 +145,69 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontSize = 11;
     const applied: Array<{ page: number; find: string; status: 'ok' | 'not_found' }> = [];
+
+    /* ===== Campos AcroForm: llenar por nombre (antes que nada) ===== */
+    let form: ReturnType<PDFDocument['getForm']> | null = null;
+    try {
+      form = pdfDoc.getForm();
+    } catch {
+      form = null;
+    }
+    const fieldResults: Array<{ name: string; status: 'ok' | 'not_found' }> = [];
+    for (const f of fields) {
+      if (!form) {
+        fieldResults.push({ name: f.name, status: 'not_found' });
+        continue;
+      }
+      try {
+        if (f.type === 'checkbox') {
+          const cb = form.getCheckBox(f.name);
+          if (f.value === 'true' || f.value === 'si' || f.value === 'sí') cb.check();
+          else cb.uncheck();
+        } else if (f.type === 'dropdown') {
+          const dd = form.getDropdown(f.name);
+          dd.select(f.value);
+        } else {
+          const tf = form.getTextField(f.name);
+          tf.setText(f.value);
+        }
+        fieldResults.push({ name: f.name, status: 'ok' });
+      } catch {
+        fieldResults.push({ name: f.name, status: 'not_found' });
+      }
+    }
+    if (form) {
+      try { form.flatten(); } catch { /* flatten opcional: si falla, los campos quedan editables */ }
+    }
+
+    /* ===== Fills: escribir texto anclado a etiquetas ===== */
+    const fillResults: Array<{ page: number; anchor: string; status: 'ok' | 'not_found' }> = [];
+    for (const fill of fills) {
+      const pageIndex = fill.page - 1;
+      if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) {
+        fillResults.push({ page: fill.page, anchor: fill.anchor, status: 'not_found' });
+        continue;
+      }
+      const page = pdfDoc.getPage(pageIndex);
+      let pos: { x: number; y: number; size: number } | null = null;
+      try {
+        pos = findAnchorCoords(page, fill.anchor, helvetica, { offsetX: fill.offsetX, offsetY: fill.offsetY });
+      } catch {
+        pos = null;
+      }
+      if (!pos) {
+        fillResults.push({ page: fill.page, anchor: fill.anchor, status: 'not_found' });
+        continue;
+      }
+      page.drawText(fill.value, {
+        x: pos.x,
+        y: pos.y,
+        size: pos.size || fontSize,
+        font: helvetica,
+        color: rgb(0, 0, 0),
+      });
+      fillResults.push({ page: fill.page, anchor: fill.anchor, status: 'ok' });
+    }
 
     for (const op of ops) {
       const pageIndex = op.page - 1;
@@ -162,6 +276,8 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
       ok: true,
       base64: outBuffer.toString('base64'),
       applied: applied.map((a) => ({ page: a.page, find: a.find, status: a.status })),
+      appliedFills: fillResults,
+      appliedFields: fieldResults,
     });
   } catch (err) {
     res.status(500).json({

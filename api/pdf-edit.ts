@@ -24,7 +24,8 @@
 
 import type { ReqLike, ResLike } from './_admin/auth.js';
 import { verifyCookie, readJsonBody } from './_admin/auth.js';
-import { extractPdfTextPerPage } from './_pdf/text.js';
+import { extractPdfTextPerPage, extractFormFields } from './_pdf/text.js';
+import { PDFDocument } from 'pdf-lib';
 
 const GOOGLE_MODEL = 'gemini-3.8-flash';
 const GROQ_MODEL = 'openai/gpt-oss-120b';
@@ -43,38 +44,73 @@ interface ReplaceOp {
   cover?: boolean;
 }
 
+/** Escribir texto nuevo en un espacio vacío, anclado a una etiqueta. */
+interface FillOp {
+  page: number;
+  anchor: string;
+  value: string;
+  offsetX?: number;
+  offsetY?: number;
+}
+
+/** Llenar un campo AcroForm real por nombre exacto. */
+interface FieldOp {
+  name: string;
+  value: string;
+  type?: 'text' | 'checkbox' | 'dropdown';
+}
+
 interface EditResponse {
   replaces: ReplaceOp[];
+  fills: FillOp[];
+  fields: FieldOp[];
   notes: string;
 }
 
 /* ===== Prompt compartido ===== */
 
-const SYSTEM_PROMPT = `Eres un asistente que extrae operaciones de "buscar y reemplazar" desde una instrucción en español sobre un PDF. SOLO devuelves JSON válido con este esquema exacto:
+const SYSTEM_PROMPT = `Eres un asistente que convierte instrucciones en español sobre un PDF en operaciones de edición. Devuelves SOLO JSON válido con este esquema:
 
 {
   "replaces": [
-    { "page": <int desde 1>, "find": <string exacto del PDF>, "replace": <nuevo texto>, "cover": <bool opcional> }
+    { "page": <int desde 1>, "find": <texto EXACTO existente>, "replace": <nuevo texto>, "cover": <bool opcional> }
   ],
-  "notes": <string breve explicando lo que hiciste o por qué no se pudo>
+  "fills": [
+    { "page": <int>, "anchor": <etiqueta EXACTA del PDF que precede al espacio>, "value": <texto a escribir>, "offsetX": <número opcional>, "offsetY": <número opcional> }
+  ],
+  "fields": [
+    { "name": <nombre EXACTO del campo AcroForm>, "value": <valor>, "type": <"text" | "checkbox" | "dropdown"> }
+  ],
+  "notes": <string breve: qué hiciste o por qué no>
 }
 
-Reglas:
-- "find" debe ser una subcadena EXACTA del PDF (mismo caso, tildes, puntuación, saltos de línea como \\n).
-- Si no encuentras el texto con certeza, NO lo incluyas y explica en "notes".
-- "page" es 1-based.
-- "cover": true cuando el reemplazo visualmente requiere tapar texto previo (ej: tachar importe y reescribir encima).
-- Si la instrucción es ambigua, devuelve "replaces": [] y explica en "notes".
-- Devuelve SOLO el JSON, sin markdown ni explicaciones fuera de él.`;
+TRES modos de operación — elige según lo que pida la instrucción:
 
-function buildUserPrompt(pdfText: string, instruction: string, pageHint?: string): string {
+1. "replaces" — CAMBIAR texto que YA EXISTE en el PDF. "find" debe ser subcadena EXACTA (mismo caso, tildes, puntuación). "cover": true cuando hay que tapar el texto previo (ej: importe tachado).
+
+2. "fills" — COMPLETAR espacios VACÍOS de un formulario impreso. El PDF tiene etiquetas con espacios en blanco después (ej: "Nombre: ________" o "DNI:"). Usa "anchor" = la etiqueta EXACTA que ya existe en el texto extraído (ej: "Nombre:"), y "value" = lo que el usuario quiere escribir ahí. El sistema escribe el valor justo después de la etiqueta, sobre la misma línea. Solo para texto que NO existe todavía en el PDF.
+
+3. "fields" — LLENAR campos de formulario reales (AcroForm) del PDF. Solo si la lista CAMPOS ACROFORM (abajo) los muestra. "name" debe ser el nombre EXACTO del campo. Para checkbox: value "true"/"false".
+
+REGLAS:
+- Puedes combinar varios modos en una misma respuesta.
+- "page" es 1-based (la primera página es 1).
+- Si la instrucción pide completar espacios y NO ves etiquetas en el texto extraído, NO inventes anchors: devuelve listas vacías y explica en "notes" qué te faltó.
+- Si el texto extraído dice "(sin texto extraíble)", el PDF es escaneado (imagen): NO se puede editar con estos modos; explícalo en "notes".
+- Si no encuentras algo con certeza, NO lo incluyas y explica en "notes".
+- Devuelve SOLO el JSON, sin markdown.`;
+
+function buildUserPrompt(pdfText: string, instruction: string, pageHint?: string, formFields?: Array<{ name: string; type: string; value: string }>): string {
   const truncated = pdfText.length > 18000 ? pdfText.slice(0, 18000) + '\n...[truncado]' : pdfText;
-  return `=== TEXTO EXTRAÍDO DEL PDF ===\n${truncated}\n\n=== INSTRUCCIÓN DEL USUARIO ===\n${instruction}\n${pageHint ? `\n=== PISTA DE PÁGINA ===\n${pageHint}\n` : ''}\nDevuelve SOLO el JSON con el esquema indicado.`;
+  const fieldsBlock = formFields && formFields.length
+    ? `\n=== CAMPOS ACROFORM DEL PDF (usa "fields" con estos nombres EXACTOS) ===\n${formFields.map((f) => `- ${f.name} (${f.type})${f.value ? ` valor actual: "${f.value}"` : ''}`).join('\n')}\n`
+    : '';
+  return `=== TEXTO EXTRAÍDO DEL PDF ===\n${truncated}\n${fieldsBlock}\n=== INSTRUCCIÓN DEL USUARIO ===\n${instruction}\n${pageHint ? `\n=== PISTA DE PÁGINA ===\n${pageHint}\n` : ''}\nDevuelve SOLO el JSON con el esquema indicado.`;
 }
 
 /* ===== Llamadas a proveedores ===== */
 
-async function callGoogle(pdfText: string, instruction: string, pageHint?: string): Promise<EditResponse> {
+async function callGoogle(pdfText: string, instruction: string, pageHint: string | undefined, formFields: Array<{ name: string; type: string; value: string }>): Promise<EditResponse> {
   const key = process.env.GOOGLE_AI_API_KEY;
   if (!key) throw new Error('GOOGLE_AI_API_KEY no configurada');
 
@@ -84,7 +120,7 @@ async function callGoogle(pdfText: string, instruction: string, pageHint?: strin
     contents: [
       {
         role: 'user',
-        parts: [{ text: buildUserPrompt(pdfText, instruction, pageHint) }],
+        parts: [{ text: buildUserPrompt(pdfText, instruction, pageHint, formFields) }],
       },
     ],
     systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
@@ -116,7 +152,7 @@ async function callGoogle(pdfText: string, instruction: string, pageHint?: strin
   }
 }
 
-async function callGroq(pdfText: string, instruction: string, pageHint?: string): Promise<EditResponse> {
+async function callGroq(pdfText: string, instruction: string, pageHint: string | undefined, formFields: Array<{ name: string; type: string; value: string }>): Promise<EditResponse> {
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new Error('GROQ_API_KEY no configurada');
 
@@ -125,7 +161,7 @@ async function callGroq(pdfText: string, instruction: string, pageHint?: string)
     model: GROQ_MODEL,
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: buildUserPrompt(pdfText, instruction, pageHint) },
+      { role: 'user', content: buildUserPrompt(pdfText, instruction, pageHint, formFields) },
     ],
     temperature: 0.1,
     response_format: { type: 'json_object' },
@@ -167,7 +203,7 @@ function parseEditResponse(raw: string): EditResponse {
   } catch {
     throw new Error('invalid_json_from_llm');
   }
-  const obj = parsed as { replaces?: unknown; notes?: unknown };
+  const obj = parsed as { replaces?: unknown; fills?: unknown; fields?: unknown; notes?: unknown };
   const replacesRaw = Array.isArray(obj.replaces) ? obj.replaces : [];
   const replaces: ReplaceOp[] = [];
   for (const r of replacesRaw) {
@@ -186,8 +222,45 @@ function parseEditResponse(raw: string): EditResponse {
       });
     }
   }
+  const fillsRaw = Array.isArray(obj.fills) ? obj.fills : [];
+  const fills: FillOp[] = [];
+  for (const f of fillsRaw) {
+    if (!f || typeof f !== 'object') continue;
+    const rec = f as Record<string, unknown>;
+    if (
+      typeof rec.page === 'number' &&
+      typeof rec.anchor === 'string' &&
+      typeof rec.value === 'string' &&
+      rec.anchor.trim() && rec.value.trim()
+    ) {
+      fills.push({
+        page: Math.max(1, Math.floor(rec.page)),
+        anchor: rec.anchor,
+        value: rec.value,
+        offsetX: typeof rec.offsetX === 'number' ? rec.offsetX : undefined,
+        offsetY: typeof rec.offsetY === 'number' ? rec.offsetY : undefined,
+      });
+    }
+  }
+  const fieldsRaw = Array.isArray(obj.fields) ? obj.fields : [];
+  const fields: FieldOp[] = [];
+  for (const f of fieldsRaw) {
+    if (!f || typeof f !== 'object') continue;
+    const rec = f as Record<string, unknown>;
+    if (
+      typeof rec.name === 'string' &&
+      typeof rec.value === 'string' &&
+      rec.name.trim()
+    ) {
+      fields.push({
+        name: rec.name,
+        value: rec.value,
+        type: rec.type === 'checkbox' || rec.type === 'dropdown' ? rec.type : 'text',
+      });
+    }
+  }
   const notes = typeof obj.notes === 'string' ? obj.notes : '';
-  return { replaces, notes };
+  return { replaces, fills, fields, notes };
 }
 
 /* ===== Extracción de texto del PDF (en servidor) ===== */
@@ -259,9 +332,19 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     pdfText = '';
   }
 
+  // Campos AcroForm: si el PDF tiene formulario real, el LLM prefiere
+  // llenarlos por nombre (más preciso que escribir texto encima).
+  let formFields: Array<{ name: string; type: string; value: string }> = [];
+  try {
+    const doc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+    formFields = extractFormFields(doc);
+  } catch {
+    formFields = [];
+  }
+
   const tries: Array<{ name: string; run: () => Promise<EditResponse> }> = [
-    { name: 'google', run: () => callGoogle(pdfText, instruction, pageHint) },
-    { name: 'groq', run: () => callGroq(pdfText, instruction, pageHint) },
+    { name: 'google', run: () => callGoogle(pdfText, instruction, pageHint, formFields) },
+    { name: 'groq', run: () => callGroq(pdfText, instruction, pageHint, formFields) },
   ];
 
   let lastErr: string | null = null;
