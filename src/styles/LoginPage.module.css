@@ -6,7 +6,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: calc(var(--header-offset) + 32px) var(--gutter) 64px;
+  /* Sin header del sitio en /login (App.tsx lo oculta): sin padding extra
+     arriba, la tarjeta queda centrada de verdad en el viewport. */
+  padding: 32px var(--gutter) 64px;
 }
 
 .card {

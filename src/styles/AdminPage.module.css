@@ -3,7 +3,9 @@
 .page {
   min-height: 100vh;
   background: var(--color-bg-light);
-  padding-top: var(--header-offset);
+  /* En /admin el header del sitio no se renderiza (ver App.tsx): no hay
+     que reservarle espacio. La topbar pegajosa va pegada al tope. */
+  padding-top: 0;
 }
 
 .loading {
