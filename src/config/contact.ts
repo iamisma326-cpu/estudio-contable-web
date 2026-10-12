@@ -19,6 +19,21 @@ export function whatsappLink(message?: string): string {
 export const WHATSAPP_GREETING =
   'Hola Sánchez Delgado & Asociados, quisiera información sobre sus servicios.';
 
+/**
+ * Tamaño máximo del adjunto.
+ * No filtramos por extensión: el `accept` del navegador OCULTA tipos que no
+ * coinciden y el cliente no puede seleccionarlos (heic, odt, escaneos…).
+ * Solo frenamos archivos pesados, que WhatsApp no logra enviar.
+ */
+export const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+
+/** Formatea bytes a una lectura humana (KB / MB) */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 interface FormData {
   nombre: string;
   email: string;
@@ -28,8 +43,18 @@ interface FormData {
   mensaje: string;
 }
 
+interface MessageOptions {
+  /** Nombre del archivo adjunto, si lo hay */
+  adjunto?: string;
+  /**
+   * true si el archivo viaja junto al mensaje (Web Share API);
+   * false si el cliente tendrá que adjuntarlo a mano en el chat.
+   */
+  adjuntoViaja?: boolean;
+}
+
 /** Convierte los datos del formulario en un mensaje estructurado para WhatsApp */
-export function buildFormMessage(data: FormData): string {
+export function buildFormMessage(data: FormData, opts: MessageOptions = {}): string {
   const lines = [
     'Hola Sánchez Delgado & Asociados, solicito un diagnóstico.',
     '',
@@ -48,6 +73,15 @@ export function buildFormMessage(data: FormData): string {
     'Mensaje:',
     data.mensaje
   );
+
+  if (opts.adjunto) {
+    lines.push(
+      '',
+      opts.adjuntoViaja
+        ? `📎 Archivo adjunto: ${opts.adjunto}`
+        : `📎 Adjuntaré el archivo: ${opts.adjunto}`
+    );
+  }
 
   return lines.join('\n');
 }

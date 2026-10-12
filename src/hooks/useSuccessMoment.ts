@@ -29,7 +29,7 @@ export default function useSuccessMoment({ active }: SuccessMomentOptions) {
         ease: 'back.out(2)',
       })
         .fromTo(
-          '[data-success="line"], .success p, .success .btn, .success .backLink',
+          '[data-success="line"], .success p, .success ol, .success .btn, .success .backLink',
           { opacity: 0, y: 12 },
           { opacity: 1, y: 0, duration: 0.35, stagger: 0.06, ease: 'power3.out' },
           '-=0.15'

@@ -191,6 +191,140 @@
   margin-top: 14px;
 }
 
+/* ===== Adjunto de archivo ===== */
+.fileField {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+.fileLabel {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.fileZone {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: calc(var(--tap-min) + 22px);
+  padding: 16px;
+  border: 1.5px dashed rgba(11, 20, 50, 0.28);
+  border-radius: var(--border-radius-sm);
+  background: transparent;
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--transition-speed) ease, background var(--transition-speed) ease;
+}
+
+.fileZone:hover,
+.fileZone:focus-visible {
+  border-color: var(--color-accent);
+  background: rgba(131, 44, 74, 0.04);
+  outline: none;
+}
+
+.fileZone:focus-visible {
+  box-shadow: 0 0 0 3px rgba(131, 44, 74, 0.15);
+}
+
+.fileZone span {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.fileZone small {
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+}
+
+/* Oculto: lo abre el botón con inputRef.click(). Sin accept, para que el
+   diálogo del navegador no oculte archivos que el cliente quiera adjuntar. */
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fileChip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap-min);
+  padding: 11px 14px;
+  border: 1.5px solid rgba(11, 20, 50, 0.16);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-bg-light);
+  color: var(--color-accent);
+}
+
+.fileName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.fileSize {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.fileRemove {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(11, 20, 50, 0.18);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--color-text-muted);
+  transition: color var(--transition-speed) ease, border-color var(--transition-speed) ease;
+}
+
+.fileRemove:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.fileError {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-danger);
+  line-height: 1.5;
+}
+
+.notice {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: rgba(131, 44, 74, 0.06);
+  border-left: 3px solid var(--color-accent);
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  line-height: 1.55;
+}
+
 /* ===== Estado éxito ===== */
 .success {
   text-align: center;
@@ -213,6 +347,23 @@
   color: var(--color-text-muted);
   max-width: 420px;
   line-height: 1.7;
+}
+
+.successSteps {
+  text-align: left;
+  max-width: 420px;
+  margin: 0 auto;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.successSteps strong {
+  color: var(--color-text);
 }
 
 .backLink {

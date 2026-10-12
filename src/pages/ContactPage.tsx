@@ -1,11 +1,19 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Paperclip, X } from 'lucide-react';
 import { IconPin, IconPhone, IconMail, IconClock, IconWhatsApp, IconSend } from '../components/icons/BrandIcons';
-import { WHATSAPP_DISPLAY, whatsappLink, buildFormMessage, WHATSAPP_GREETING } from '../config/contact';
+import {
+  WHATSAPP_DISPLAY,
+  whatsappLink,
+  buildFormMessage,
+  WHATSAPP_GREETING,
+  MAX_FILE_SIZE,
+  formatFileSize,
+} from '../config/contact';
 import useSEO from '../hooks/useSEO';
 import useRevealAnimations from '../hooks/useRevealAnimations';
 import useSuccessMoment from '../hooks/useSuccessMoment';
+import useFileAttachment from '../hooks/useFileAttachment';
 import styles from '../styles/ContactPage.module.css';
 
 const serviceOptions = [
@@ -18,12 +26,20 @@ const serviceOptions = [
   'Otro / no estoy seguro',
 ];
 
+/** Cómo terminó el envío: share = archivo compartido directo, manual = adjuntar a mano */
+type SendMode = 'none' | 'share' | 'manual';
+
 export default function ContactPage() {
   useRevealAnimations();
   const [sent, setSent] = useState(false);
   const successRef = useSuccessMoment({ active: sent });
   const [waUrl, setWaUrl] = useState('');
   const [service, setService] = useState(serviceOptions[0]);
+  const [sendMode, setSendMode] = useState<SendMode>('none');
+  const [sentFile, setSentFile] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const { file, error, inputKey, inputRef, handleChange, clear, openPicker, canShareFiles } =
+    useFileAttachment();
 
   useSEO({
     title: 'Contacto | Agenda tu diagnóstico gratuito — Sánchez Delgado & Asociados',
@@ -33,8 +49,9 @@ export default function ContactPage() {
     breadcrumb: [{ name: 'Contacto', path: '/contacto' }],
   });
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setNotice(null);
 
     const formData = new FormData(e.currentTarget);
     const data = {
@@ -46,12 +63,47 @@ export default function ContactPage() {
       mensaje: String(formData.get('mensaje') || ''),
     };
 
-    const url = whatsappLink(buildFormMessage(data));
+    const willShare = canShareFiles(file);
+    const text = buildFormMessage(data, { adjunto: file?.name, adjuntoViaja: willShare });
 
-    // Ocurre dentro del gesto del click: los bloqueadores de popups no lo impiden
+    // 1) Con archivo y soporte de Web Share: el sistema comparte mensaje + archivo.
+    //    Se llama dentro del gesto del submit (sin awaits previos) para conservar
+    //    la activación del usuario que exige navigator.share.
+    if (file && willShare) {
+      try {
+        await navigator.share({ files: [file], text });
+        setWaUrl('');
+        setSentFile(file.name);
+        setSendMode('share');
+        setSent(true);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          // El cliente cerró la hoja de compartir: no damos por enviado nada.
+          setNotice(
+            'Cancelaste el envío. Tu formulario sigue aquí: vuelve a presionar enviar cuando quieras.'
+          );
+          return;
+        }
+        // Otro fallo de share: caemos a wa.me con instrucciones de adjuntar a mano.
+        const fallbackText = buildFormMessage(data, { adjunto: file.name, adjuntoViaja: false });
+        const url = whatsappLink(fallbackText);
+        window.open(url, '_blank', 'noopener,noreferrer');
+        setWaUrl(url);
+        setSentFile(file.name);
+        setSendMode('manual');
+        setSent(true);
+      }
+      return;
+    }
+
+    // 2) Sin archivo, o sin soporte de Web Share: wa.me como hasta ahora.
+    //    Con archivo, la pantalla de éxito explica cómo adjuntarlo en el chat.
+    const url = whatsappLink(text);
     window.open(url, '_blank', 'noopener,noreferrer');
 
     setWaUrl(url);
+    setSentFile(file?.name ?? null);
+    setSendMode(file ? 'manual' : 'none');
     setSent(true);
   };
 
@@ -131,20 +183,57 @@ export default function ContactPage() {
                punto donde el usuario necesita que le avisen. */
             <div className={styles.success} role="status" aria-live="polite" ref={successRef}>
               <CheckCircle2 size={52} className={styles.successIcon} data-success="mark" />
-              <h2 data-success="line">¡Listo para enviar!</h2>
-              <p>
-                Se abrió WhatsApp con tu mensaje ya escrito hacia nuestro número{' '}
-                <strong>{WHATSAPP_DISPLAY}</strong>. Solo presiona <strong>enviar</strong> en
-                la app y un especialista te responderá dentro de las próximas 24 horas hábiles.
-              </p>
-              <a
-                href={waUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-primary"
-              >
-                ¿No se abrió? Toca aquí
-              </a>
+              <h2 data-success="line">
+                {sendMode === 'share' ? '¡Mensaje y archivo listos!' : '¡Listo para enviar!'}
+              </h2>
+
+              {sendMode === 'share' ? (
+                <p>
+                  Se abrió el menú para compartir y elegiste WhatsApp: tu mensaje y{' '}
+                  <strong>{sentFile}</strong> viajan juntos hacia nuestro número{' '}
+                  <strong>{WHATSAPP_DISPLAY}</strong>. Solo presiona <strong>enviar</strong> y un
+                  especialista te responderá dentro de las próximas 24 horas hábiles.
+                </p>
+              ) : sendMode === 'manual' ? (
+                <>
+                  <p>
+                    Se abrió WhatsApp con tu mensaje hacia nuestro número{' '}
+                    <strong>{WHATSAPP_DISPLAY}</strong>. Falta un paso: adjunta{' '}
+                    <strong>{sentFile}</strong> en el chat.
+                  </p>
+                  <ol className={styles.successSteps}>
+                    <li>Toca el clip <strong>📎</strong> junto a la barra de mensajes.</li>
+                    <li>Elige <strong>Documentos</strong> (o <strong>Galería</strong>, si es una foto).</li>
+                    <li>Busca y selecciona <strong>{sentFile}</strong>.</li>
+                    <li>Presiona <strong>enviar</strong>.</li>
+                  </ol>
+                  <a
+                    href={waUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-primary"
+                  >
+                    ¿No se abrió? Toca aquí
+                  </a>
+                </>
+              ) : (
+                <>
+                  <p>
+                    Se abrió WhatsApp con tu mensaje ya escrito hacia nuestro número{' '}
+                    <strong>{WHATSAPP_DISPLAY}</strong>. Solo presiona <strong>enviar</strong> en
+                    la app y un especialista te responderá dentro de las próximas 24 horas hábiles.
+                  </p>
+                  <a
+                    href={waUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-primary"
+                  >
+                    ¿No se abrió? Toca aquí
+                  </a>
+                </>
+              )}
+
               <button type="button" className={styles.backLink} onClick={() => setSent(false)}>
                 Volver al formulario
               </button>
@@ -198,12 +287,55 @@ export default function ContactPage() {
                 />
               </label>
 
+              <div className={styles.fileField}>
+                <span className={styles.fileLabel}>Adjunta tu escrito o documento (opcional)</span>
+                <input
+                  key={inputKey}
+                  ref={inputRef}
+                  type="file"
+                  name="adjunto"
+                  className={styles.fileInput}
+                  onChange={handleChange}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                />
+                {file ? (
+                  <div className={styles.fileChip}>
+                    <Paperclip size={15} aria-hidden="true" />
+                    <span className={styles.fileName} title={file.name}>{file.name}</span>
+                    <span className={styles.fileSize}>{formatFileSize(file.size)}</span>
+                    <button
+                      type="button"
+                      className={styles.fileRemove}
+                      onClick={clear}
+                      aria-label={`Quitar archivo ${file.name}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" className={styles.fileZone} onClick={openPicker}>
+                    <Paperclip size={17} aria-hidden="true" />
+                    <span>Selecciona un archivo</span>
+                    <small>Cualquier formato · máx. {formatFileSize(MAX_FILE_SIZE)}</small>
+                  </button>
+                )}
+                {error && (
+                  <p className={styles.fileError} role="alert">{error}</p>
+                )}
+              </div>
+
+              {notice && (
+                <p className={styles.notice} role="status">{notice}</p>
+              )}
+
               <button type="submit" className={styles.submitBtn}>
                 <IconSend size={17} /> Enviar por WhatsApp
               </button>
               <p className={styles.privacy}>
                 Al enviar se abrirá WhatsApp con tu mensaje listo — solo debes presionar
-                enviar. Tus datos se usan únicamente para responderte.
+                enviar. Si adjuntaste un archivo, podrás compartirlo directo o
+                adjuntarlo en el chat. Tus datos se usan únicamente para responderte.
               </p>
             </form>
           )}
