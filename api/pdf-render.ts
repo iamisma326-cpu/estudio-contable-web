@@ -191,7 +191,10 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
       const page = pdfDoc.getPage(pageIndex);
       let pos: { x: number; y: number; size: number } | null = null;
       try {
-        pos = findAnchorCoords(page, fill.anchor, helvetica, { offsetX: fill.offsetX, offsetY: fill.offsetY });
+        pos = await findAnchorCoords(pdfBuffer, pageIndex, fill.anchor, helvetica, {
+          offsetX: fill.offsetX,
+          offsetY: fill.offsetY,
+        });
       } catch {
         pos = null;
       }
@@ -220,7 +223,7 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
 
       let coords: { x: number; y: number; width: number; height: number } | null = null;
       try {
-        coords = findTextCoords(page, op.find, helvetica);
+        coords = await findTextCoords(pdfBuffer, pageIndex, op.find, helvetica);
       } catch {
         coords = null;
       }
