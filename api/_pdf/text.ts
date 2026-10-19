@@ -637,6 +637,40 @@ export function extractFormFields(pdfDoc: PDFDocument): Array<{ name: string; ty
  *      no-soportado, WASM faltante en runtime), usamos el extractor propio
  *      de operadores de texto con pdf-lib.
  */
+export interface ExtractDiag {
+  engine: 'pdfjs' | 'manual' | 'mixed' | 'none';
+  pageCount: number;
+  pages: Array<{ page: number; engine: string; items: number; error?: string }>;
+  pdfjsFatal?: string;
+  manualFatal?: string;
+}
+
+export interface DetailedExtract {
+  text: string;
+  diag: ExtractDiag;
+}
+
+/** Igual que extractPdfTextPerPage pero devuelve diagnóstico por capa/página. */
+export async function extractPdfTextDetailed(pdfBuffer: Buffer): Promise<DetailedExtract> {
+  const diag: ExtractDiag = { engine: 'none', pageCount: 0, pages: [] };
+  try {
+    const res = await extractWithPdfjsDetailed(pdfBuffer, diag);
+    return res;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    diag.pdfjsFatal = msg;
+    console.warn('[pdf-text] pdfjs falló, usando parser manual:', msg);
+    try {
+      const text = await extractWithManualParser(pdfBuffer, diag);
+      diag.engine = diag.pages.some((p) => p.engine === 'manual' && p.items > 0) ? 'manual' : 'none';
+      return { text, diag };
+    } catch (err2) {
+      diag.manualFatal = err2 instanceof Error ? err2.message : String(err2);
+      return { text: '', diag };
+    }
+  }
+}
+
 export async function extractPdfTextPerPage(pdfBuffer: Buffer): Promise<string> {
   try {
     return await extractWithPdfjs(pdfBuffer);
@@ -646,7 +680,7 @@ export async function extractPdfTextPerPage(pdfBuffer: Buffer): Promise<string> 
   }
 }
 
-async function extractWithPdfjs(pdfBuffer: Buffer): Promise<string> {
+async function extractWithPdfjsDetailed(pdfBuffer: Buffer, diag: ExtractDiag): Promise<DetailedExtract> {
   // Nota: pdfjs corre en este mismo proceso (worker legacy en Node). No puede
   // abortarse; el timeout de Vercel es la red de seguridad ante un PDF
   // malicioso/corrupto que haga girar el parser.
@@ -655,6 +689,7 @@ async function extractWithPdfjs(pdfBuffer: Buffer): Promise<string> {
     useSystemFonts: false,
     password: '',
   }).promise;
+  diag.pageCount = pdf.numPages;
   const out: string[] = [];
   const emptyPages: number[] = [];
   for (let i = 0; i < pdf.numPages; i++) {
@@ -676,8 +711,9 @@ async function extractWithPdfjs(pdfBuffer: Buffer): Promise<string> {
         if (!t.str.trim()) continue;
         items.push({ str: t.str, x, y, w: t.width ?? 0, h });
       }
-    } catch {
+    } catch (err) {
       // Página corrupta o ignorada por pdfjs: cae al parser manual.
+      diag.pages.push({ page: i + 1, engine: 'pdfjs', items: 0, error: err instanceof Error ? err.message : String(err) });
       items = [];
     }
     if (items.length) {
@@ -687,9 +723,13 @@ async function extractWithPdfjs(pdfBuffer: Buffer): Promise<string> {
         if (bandA !== bandB) return bandB - bandA; // Y descendente (arriba→abajo)
         return a.x - b.x;
       });
+      diag.pages.push({ page: i + 1, engine: 'pdfjs', items: items.length });
       out.push(`=== PÁGINA ${i + 1} ===\n${items.map((it) => it.str).join('\n')}`);
     } else {
       emptyPages.push(i);
+      if (!diag.pages.some((p) => p.page === i + 1)) {
+        diag.pages.push({ page: i + 1, engine: 'pdfjs', items: 0 });
+      }
       out.push(`=== PÁGINA ${i + 1} ===\n<<EMPTY_${i}>>`);
     }
   }
@@ -704,26 +744,39 @@ async function extractWithPdfjs(pdfBuffer: Buffer): Promise<string> {
       for (const i of emptyPages) {
         if (i < 0 || i >= pdfDoc.getPageCount()) continue;
         const manualItems = extractTextItems(pdfDoc.getPage(i), dummy);
+        const entry = diag.pages.find((p) => p.page === i + 1);
+        if (entry) entry.engine = manualItems.length ? 'manual' : 'none';
         if (manualItems.length) {
           manualItems.sort((a, b) => (Math.abs(a.y - b.y) < 2 ? a.x - b.x : b.y - a.y));
+          if (entry) entry.items = manualItems.length;
           out[i] = `=== PÁGINA ${i + 1} ===\n${manualItems.map((it) => it.str).join('\n')}`;
         } else {
           out[i] = `=== PÁGINA ${i + 1} ===\n(sin texto extraíble — posiblemente escaneada)`;
         }
       }
-    } catch {
+    } catch (err) {
       // PDF ilegible por pdf-lib: quedan los marcadores <<EMPTY_i>>;
       // extractPdfTextPerPage no debe caer entero al parser manual por una
       // página individual.
+      diag.manualFatal = err instanceof Error ? err.message : String(err);
     }
   }
-  return out.join('\n\n');
+  const anyOk = diag.pages.some((p) => p.items > 0);
+  diag.engine = anyOk
+    ? (diag.pages.some((p) => p.items > 0 && p.engine === 'manual') ? 'mixed' : 'pdfjs')
+    : 'none';
+  return { text: out.join('\n\n'), diag };
+}
+
+async function extractWithPdfjs(pdfBuffer: Buffer): Promise<string> {
+  const { text } = await extractWithPdfjsDetailed(pdfBuffer, { engine: 'pdfjs', pageCount: 0, pages: [] });
+  return text;
 }
 /**
  * Fallback: extracción con el parser manual (operadores BT/ET, Tf, Tm, Tj,
  * TJ...). Devuelve el mismo formato "=== PÁGINA n ===".
  */
-async function extractWithManualParser(pdfBuffer: Buffer): Promise<string> {
+async function extractWithManualParser(pdfBuffer: Buffer, diag?: ExtractDiag): Promise<string> {
   const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
   const pages = pdfDoc.getPages();
   const dummy: { widthOfTextAtSize: (s: string, n: number) => number } = {
@@ -733,6 +786,7 @@ async function extractWithManualParser(pdfBuffer: Buffer): Promise<string> {
   const out: string[] = [];
   for (let i = 0; i < pages.length; i++) {
     const items = extractTextItems(pages[i], dummy);
+    diag?.pages.push({ page: i + 1, engine: items.length ? 'manual' : 'none', items: items.length });
     if (!items.length) {
       out.push(`=== PÁGINA ${i + 1} ===\n(sin texto extraíble — posiblemente escaneada)`);
       continue;

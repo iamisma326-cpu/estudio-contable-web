@@ -24,7 +24,7 @@
 
 import type { ReqLike, ResLike } from './_admin/auth.js';
 import { verifyCookie, readJsonBody } from './_admin/auth.js';
-import { extractPdfTextPerPage, extractFormFields } from './_pdf/text.js';
+import { extractPdfTextPerPage, extractPdfTextDetailed, extractFormFields } from './_pdf/text.js';
 import { PDFDocument } from 'pdf-lib';
 
 const GOOGLE_MODEL = 'gemini-3.8-flash';
@@ -35,6 +35,8 @@ interface EditRequest {
   pdfBase64?: unknown;
   instruction?: unknown;
   pageHint?: unknown;
+  /** Diagnóstico de extracción: no consulta el LLM, devuelve capas/páginas. */
+  debug?: unknown;
 }
 
 interface ReplaceOp {
@@ -322,6 +324,23 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
   }
   if (pdfBuffer.length > 3 * 1024 * 1024) {
     res.status(413).json({ ok: false, error: 'pdf_too_large' });
+    return;
+  }
+
+  // Modo diagnóstico: devuelve qué capa extrajo qué página y por qué falló.
+  // No consulta el LLM. Para depurar PDFs "escaneados" que no lo son.
+  if (body?.debug === true) {
+    try {
+      const detailed = await extractPdfTextDetailed(pdfBuffer);
+      res.status(200).json({
+        ok: true,
+        provider: 'debug',
+        diag: detailed.diag,
+        textPreview: detailed.text.slice(0, 1200),
+      });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: 'debug_failed', detail: err instanceof Error ? err.message : String(err) });
+    }
     return;
   }
 
