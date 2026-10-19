@@ -39,6 +39,7 @@ import {
   CheckCircle2,
   RefreshCw,
   X,
+  PencilLine,
 } from 'lucide-react';
 import styles from '../styles/PDFEditor.module.css';
 
@@ -111,6 +112,11 @@ export default function PDFEditor() {
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  // ===== Edición manual (sin IA): buscar → reemplazar directo =====
+  const [manualMode, setManualMode] = useState(false);
+  const [manual, setManual] = useState<ReplaceOp>({ page: 1, find: '', replace: '', cover: false });
+  const [manualBusy, setManualBusy] = useState(false);
+  const [manualMsg, setManualMsg] = useState<string | null>(null);
   const debounceRef = useRef<number | null>(null);
   const latestReqRef = useRef(0);
 
@@ -133,6 +139,7 @@ export default function PDFEditor() {
     setFills([]);
     setFields([]);
     setNotes('');
+    setManualMsg(null);
   }, []);
 
   const onFileInput = (e: ChangeEvent<HTMLInputElement>) => {
@@ -244,6 +251,65 @@ export default function PDFEditor() {
   const removeOp = (idx: number) => {
     setReplaces((prev) => prev.filter((_, i) => i !== idx));
   };
+
+  /**
+   * Edición manual sin IA: manda UNA op de reemplazo directo a /api/pdf-render
+   * y descarga el PDF. Para cuando el usuario ya sabe el texto exacto y no
+   * quiere pasar por el análisis del LLM.
+   */
+  const applyManual = useCallback(async () => {
+    if (!pdfBase64) return;
+    if (!manual.find.trim()) {
+      setManualMsg('Indica el texto a buscar (exacto y con las mismas tildes).');
+      return;
+    }
+    setManualBusy(true);
+    setManualMsg(null);
+    try {
+      const res = await fetch('/api/pdf-render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          pdfBase64,
+          ops: [{
+            page: Math.max(1, Math.floor(manual.page) || 1),
+            find: manual.find,
+            replace: manual.replace,
+            cover: manual.cover === true,
+          }],
+        }),
+      });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        setManualMsg(detail.error || 'No se pudo generar el PDF.');
+        return;
+      }
+      const data = await res.json();
+      if (!data.ok || typeof data.base64 !== 'string') {
+        setManualMsg(data.error || 'No se pudo generar el PDF.');
+        return;
+      }
+      const applied = (Array.isArray(data.applied) ? data.applied : []) as Array<{ status?: string } | null>;
+      const located = applied.some((a) => a?.status === 'ok');
+      const link = document.createElement('a');
+      link.href = `data:application/pdf;base64,${data.base64}`;
+      const original = file?.name?.replace(/\.pdf$/i, '') || 'documento';
+      link.download = `${original}-editado.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setManualMsg(
+        located
+          ? 'Reemplazo aplicado y PDF descargado.'
+          : 'No se ubicó el texto exacto: el PDF descargado incluye una nota al pie con el cambio.',
+      );
+    } catch {
+      setManualMsg('Error de red al generar el PDF.');
+    } finally {
+      setManualBusy(false);
+    }
+  }, [file, pdfBase64, manual]);
   const removeFill = (idx: number) => {
     setFills((prev) => prev.filter((_, i) => i !== idx));
   };
@@ -395,18 +461,90 @@ export default function PDFEditor() {
         <div className={styles.opsPanel}>
           <header className={styles.opsHeader}>
             <h2 className={styles.opsTitle}>Cambios propuestos</h2>
-            {(replaces.length + fills.length + fields.length) > 0 && (
+            <div className={styles.opsActions}>
               <button
                 type="button"
-                onClick={applyChanges}
-                disabled={rendering}
-                className={styles.applyBtn}
+                onClick={() => setManualMode((m) => !m)}
+                className={`${styles.manualToggle} ${manualMode ? styles.manualToggleOn : ''}`}
+                disabled={!file}
               >
-                <Download size={15} />
-                {rendering ? 'Generando…' : 'Aplicar y descargar'}
+                <PencilLine size={15} />
+                Editar manualmente
               </button>
-            )}
+              {(replaces.length + fills.length + fields.length) > 0 && (
+                <button
+                  type="button"
+                  onClick={applyChanges}
+                  disabled={rendering}
+                  className={styles.applyBtn}
+                >
+                  <Download size={15} />
+                  {rendering ? 'Generando…' : 'Aplicar y descargar'}
+                </button>
+              )}
+            </div>
           </header>
+
+          {manualMode && (
+            <div className={styles.manualSection}>
+              <div className={styles.opFields}>
+                <label className={styles.opField}>
+                  <span>Página</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={manual.page}
+                    onChange={(e) => setManual((p) => ({ ...p, page: Number(e.target.value) || 1 }))}
+                    className={styles.opInput}
+                    disabled={!file || manualBusy}
+                  />
+                </label>
+                <label className={styles.opField}>
+                  <span>Texto a buscar (exacto)</span>
+                  <input
+                    type="text"
+                    value={manual.find}
+                    onChange={(e) => setManual((p) => ({ ...p, find: e.target.value }))}
+                    placeholder="Ej.: DNI N.º 09404027"
+                    className={styles.opInput}
+                    disabled={!file || manualBusy}
+                  />
+                </label>
+                <label className={styles.opField}>
+                  <span>Reemplazar por</span>
+                  <input
+                    type="text"
+                    value={manual.replace}
+                    onChange={(e) => setManual((p) => ({ ...p, replace: e.target.value }))}
+                    placeholder="Ej.: DNI N.º 11111111"
+                    className={styles.opInput}
+                    disabled={!file || manualBusy}
+                  />
+                </label>
+              </div>
+              <label className={styles.opCover}>
+                <input
+                  type="checkbox"
+                  checked={manual.cover === true}
+                  onChange={(e) => setManual((p) => ({ ...p, cover: e.target.checked }))}
+                  disabled={!file || manualBusy}
+                />
+                Tapar el texto anterior (útil si el texto nuevo es de otra longitud)
+              </label>
+              <div className={styles.manualActions}>
+                <button
+                  type="button"
+                  onClick={applyManual}
+                  disabled={!file || manualBusy || !manual.find.trim()}
+                  className={styles.applyBtn}
+                >
+                  <Download size={15} />
+                  {manualBusy ? 'Generando…' : 'Aplicar cambio y descargar'}
+                </button>
+                {manualMsg && <span className={styles.manualMsg}>{manualMsg}</span>}
+              </div>
+            </div>
+          )}
 
           {error && (
             <p className={styles.errorBox}>
@@ -419,9 +557,9 @@ export default function PDFEditor() {
             <p className={styles.notes}>{notes}</p>
           )}
 
-          {replaces.length + fills.length + fields.length === 0 && !busy && !error && (
+          {replaces.length + fills.length + fields.length === 0 && !busy && !error && !manualMode && (
             <p className={styles.empty}>
-              Aún no hay reemplazos. Escribe una instrucción para empezar.
+              Aún no hay reemplazos. Escribe una instrucción para empezar o usa "Editar manualmente".
             </p>
           )}
 

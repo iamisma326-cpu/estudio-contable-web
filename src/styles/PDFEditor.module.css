@@ -249,6 +249,69 @@
   margin: 0;
 }
 
+.opsActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.manualToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-speed) ease, color var(--transition-speed) ease;
+}
+
+.manualToggle:hover:not(:disabled) {
+  background: rgba(131, 44, 74, 0.08);
+}
+
+.manualToggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.manualToggleOn {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.manualToggleOn:hover:not(:disabled) {
+  background: var(--color-primary-light);
+}
+
+.manualSection {
+  margin: 0 0 14px;
+  padding: 12px;
+  background: rgba(131, 44, 74, 0.04);
+  border: 1px solid rgba(131, 44, 74, 0.18);
+  border-radius: 10px;
+}
+
+.manualActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.manualMsg {
+  font-size: 0.85rem;
+  color: var(--color-primary);
+}
+
 .applyBtn {
   display: inline-flex;
   align-items: center;
