@@ -21,6 +21,33 @@ import {
 } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 
+/*
+ * Worker de pdfjs para serverless (Vercel): el fake worker intenta hacer
+ * import dinámico de pdf.worker.mjs en runtime y en /var/task el archivo no
+ * está (el bundler solo empaqueta imports estáticos) → "Setting up fake
+ * worker failed". Importándolo aquí y exponiéndolo como pdfjsWorker,
+ * pdfjs lo reutiliza sin buscar el archivo en disco.
+ */
+type PdfjsWorkerModule = { pdfjsWorker?: unknown };
+let pdfjsWorkerReady: Promise<PdfjsWorkerModule | null> | null = null;
+function ensurePdfjsWorker(): Promise<PdfjsWorkerModule | null> {
+  if (!pdfjsWorkerReady) {
+    pdfjsWorkerReady = (async () => {
+      try {
+        const mod = (await import('pdfjs-dist/legacy/build/pdf.worker.mjs')) as PdfjsWorkerModule;
+        if (mod?.pdfjsWorker && typeof globalThis !== 'undefined' && !(globalThis as Record<string, unknown>).pdfjsWorker) {
+          (globalThis as Record<string, unknown>).pdfjsWorker = mod.pdfjsWorker;
+        }
+        return mod;
+      } catch {
+        // Si falla, el fake worker builtin intentará su propio camino.
+        return null;
+      }
+    })();
+  }
+  return pdfjsWorkerReady;
+}
+
 export type PdfPage = ReturnType<PDFDocument['getPage']>;
 
 /** Decodifica strings PDF entre paréntesis: escapes y octal. */
@@ -54,8 +81,16 @@ export function hexToText(hex: string): string {
 
 /** Concatena los content streams de la página ya descomprimidos. */
 export function getPageContentRaw(page: PdfPage): string {
-  const contents = page.node.get(PDFName.of('Contents'));
-  if (!contents) return '';
+  // lookup (no get): get devuelve el PDFRef crudo cuando Contents es una ref
+  // (p. ej. ReportLab), y entonces los checks instanceof descartaban todo y
+  // el parser manual leía un content stream vacío → "escaneado" fantasma.
+  let contents: unknown;
+  try {
+    contents = page.node.lookup(PDFName.of('Contents'));
+  } catch {
+    contents = undefined;
+  }
+  if (!(contents instanceof PDFRawStream) && !(contents instanceof PDFArray)) return '';
   const streams: PDFRawStream[] = [];
   if (contents instanceof PDFRawStream) {
     streams.push(contents);
@@ -425,12 +460,12 @@ async function getRunsViaPdfjs(
   pageIndex0: number
 ): Promise<LocatedRun[] | null> {
   try {
-    const pdf = await pdfjsLib.getDocument({
-      data: new Uint8Array(pdfBuffer),
-      useSystemFonts: false,
-      password: '',
-    }).promise;
-    if (pageIndex0 < 0 || pageIndex0 >= pdf.numPages) return null;
+  const pdf = await (await ensurePdfjsWorker(), pdfjsLib.getDocument)({
+    data: new Uint8Array(pdfBuffer),
+    useSystemFonts: false,
+    password: '',
+  }).promise;
+  if (pageIndex0 < 0 || pageIndex0 >= pdf.numPages) return null;
     const page = await pdf.getPage(pageIndex0 + 1);
     const content = await page.getTextContent();
     const runs: LocatedRun[] = [];
@@ -684,7 +719,7 @@ async function extractWithPdfjsDetailed(pdfBuffer: Buffer, diag: ExtractDiag): P
   // Nota: pdfjs corre en este mismo proceso (worker legacy en Node). No puede
   // abortarse; el timeout de Vercel es la red de seguridad ante un PDF
   // malicioso/corrupto que haga girar el parser.
-  const pdf = await pdfjsLib.getDocument({
+  const pdf = await (await ensurePdfjsWorker(), pdfjsLib.getDocument)({
     data: new Uint8Array(pdfBuffer),
     useSystemFonts: false,
     password: '',
