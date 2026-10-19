@@ -15,6 +15,7 @@ import {
   PDFDocument,
   PDFRawStream,
   PDFArray,
+  PDFDict,
   PDFName,
   decodePDFRawStream,
 } from 'pdf-lib';
@@ -78,6 +79,89 @@ export function getPageContentRaw(page: PdfPage): string {
     .join('\n');
 }
 
+/**
+ * Decodifica el contenido de cualquier stream de contenido:
+ *  - PDFRawStream con filtro (FlateDecode/etc.).
+ *  - PDFFlateStream/PDFContentStream en memoria creados por pdf-lib
+ *    (getContents / getUnencodedContents).
+ * decodePDFRawStream sólo pide {dict, contents}: le pasamos los bytes que
+ * tengamos y él maneja el Filter del dict.
+ */
+function decodeContentStream(s: unknown): string {
+  try {
+    let bytes: Uint8Array | undefined;
+    if (s instanceof PDFRawStream) {
+      bytes = s.contents;
+    } else if (typeof (s as { getContents?: () => Uint8Array }).getContents === 'function') {
+      bytes = (s as { getContents: () => Uint8Array }).getContents();
+    }
+    if (!bytes) return '';
+    const dict = (s as { dict?: unknown }).dict;
+    const fake = { dict, contents: bytes } as unknown as Parameters<typeof decodePDFRawStream>[0];
+    return Buffer.from(decodePDFRawStream(fake).decode()).toString('latin1');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Subtype del objeto stream, o '' si no es stream o no se puede leer.
+ */
+function streamSubtype(s: unknown): string {
+  try {
+    const dict = (s as { dict?: { get?: (n: unknown) => unknown } }).dict;
+    const st = dict && typeof dict.get === 'function' ? dict.get(PDFName.of('Subtype')) : undefined;
+    return st && typeof (st as { toString?: () => string }).toString === 'function'
+      ? (st as { toString: () => string }).toString().replace(/^\//, '')
+      : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * XObjects Form de la página, decodificados por nombre (sin slash: 'Im0').
+ * Los sistemas de impresión y generadores de facturas suelen meter todo el
+ * texto de la página dentro de un Form XObject y dibujarlo con /Im0 Do — sin
+ * esto el parser manual (que solo mira el content stream directo de la
+ * página) los reporta como "escaneados".
+ */
+function getFormXObjects(page: PdfPage): Map<string, string> {
+  const out = new Map<string, string>();
+  try {
+    const res = page.node.Resources();
+    if (!res) return out;
+    const xobjs: PDFDict | undefined = res.lookupMaybe(PDFName.of('XObject'), PDFDict);
+    if (!xobjs) return out;
+    for (const key of xobjs.keys()) {
+      const name = key.toString().replace(/^\//, '');
+      if (!name || out.has(name)) continue;
+      try {
+        let stream: unknown | undefined;
+        try {
+          // lookup resuelve refs internamente; lanzará con refs muertas.
+          stream = xobjs.lookup(key);
+        } catch {
+          stream = undefined;
+        }
+        if (!stream) continue;
+        // Descarta Subtype conocidos sin texto (Image, PS...). Si el dict no
+        // trae Subtype (XObjects crudos de facturas), lo incluye igual: el
+        // tokenizer ignora bytes binarios inofensivos.
+        const st = streamSubtype(stream);
+        if (st && st !== 'Form') continue;
+        const content = decodeContentStream(stream);
+        if (content) out.set(name, content);
+      } catch {
+        /* XObject ilegible: se ignora */
+      }
+    }
+  } catch {
+    /* Página sin Resources: no hay XObjects */
+  }
+  return out;
+}
+
 export interface TextItem {
   str: string;
   x: number;
@@ -85,7 +169,7 @@ export interface TextItem {
   size: number;
 }
 
-interface Tok { kind: 'str' | 'hex' | 'op' | 'num'; value: string }
+interface Tok { kind: 'str' | 'hex' | 'op' | 'num' | 'name'; value: string }
 interface Mat { a: number; b: number; c: number; d: number; e: number; f: number }
 
 /** findLast manual (el proyecto compila con lib ES2022, sin Array#findLast). */
@@ -105,6 +189,11 @@ function lastText(ops: Tok[]): Tok | undefined {
 /**
  * Extrae los runs de texto de una página con coordenadas reales.
  * `measure` sólo se usa para acumular desplazamientos horizontales en TJ.
+ *
+ * Recursa en los Form XObjects de la página (operador /Do): el texto puede
+ * estar dentro de ellos en facturas generadas por sistemas de impresión.
+ * Mantiene un stack de CTM (q/Q/cm) para convertir las coordenadas del
+ * XObject al espacio de página.
  */
 export function extractTextItems(
   page: PdfPage,
@@ -114,141 +203,204 @@ export function extractTextItems(
   if (!raw) return [];
 
   const items: TextItem[] = [];
-  let tm: Mat = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
-  let tlm: Mat = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
-  let fontSize = 11;
-  let leading = 0;
-  // El tamaño real del texto es |Tm.d| × Tf-size (Tm.d escala la fuente).
-  const curSize = (): number => Math.abs(tm.d) * fontSize || fontSize;
+  const xobjects = getFormXObjects(page);
+  const MAX_DEPTH = 8;
 
-  // Tokenizador: strings (...), hex <...>, números y operadores.
-  const tokRe = /\((?:\\.|[^\\()])*\)|<[0-9A-Fa-f\s]+>|[^\s()<>]+/g;
-  const tokens: Tok[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = tokRe.exec(raw))) {
-    const t = m[0];
-    if (t.startsWith('(')) tokens.push({ kind: 'str', value: t.slice(1, -1) });
-    else if (t.startsWith('<')) tokens.push({ kind: 'hex', value: t.slice(1, -1) });
-    else if (/^-?\d*\.?\d+$/.test(t)) tokens.push({ kind: 'num', value: t });
-    else tokens.push({ kind: 'op', value: t });
-  }
+  /** Producto de matrices (PDF: las multiplicaciones se aplican derecha→izquierda). */
+  const matMul = (m1: Mat, m2: Mat): Mat => ({
+    a: m1.a * m2.a + m1.b * m2.c,
+    b: m1.a * m2.b + m1.b * m2.d,
+    c: m1.c * m2.a + m1.d * m2.c,
+    d: m1.c * m2.b + m1.d * m2.d,
+    e: m1.e * m2.a + m1.f * m2.c + m2.e,
+    f: m1.e * m2.b + m1.f * m2.d + m2.f,
+  });
 
-  const nums = (ops: Tok[]): number[] =>
-    ops.filter((o) => o.kind === 'num').map((o) => Number(o.value));
-  const textOf = (o: Tok): string =>
-    o.kind === 'str' ? decodePdfTextString(o.value) : hexToText(o.value);
+  const processContent = (content: string, ctm: Mat, depth: number): void => {
+    let tm: Mat = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+    let tlm: Mat = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+    let fontSize = 11;
+    let leading = 0;
+    const ctmStack: Mat[] = [];
+    // El tamaño real del texto es escala(CTM) × |Tm.d| × Tf-size.
+    const ctmScale = Math.sqrt(Math.abs(ctm.a * ctm.d - ctm.b * ctm.c)) || 1;
+    const curSize = (): number => Math.abs(tm.d) * fontSize * ctmScale || fontSize * ctmScale;
+    /** Text space → world space: aplica la CTM al punto origen del glyph. */
+    const toWorld = (x: number, y: number): { x: number; y: number } => ({
+      x: ctm.a * x + ctm.c * y + ctm.e,
+      y: ctm.b * x + ctm.d * y + ctm.f,
+    });
 
-  let operandos: Tok[] = [];
-  for (const tok of tokens) {
-    if (tok.kind !== 'op') {
-      operandos.push(tok);
-      continue;
+    // Tokenizador: strings (...), hex <...>, números, nombres /Xx y operadores.
+    const tokRe = /\((?:\\.|[^\\()])*\)|<[0-9A-Fa-f\s]+>|\/[^\s()<>]+|[^\s()<>]+/g;
+    const tokens: Tok[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = tokRe.exec(content))) {
+      const t = m[0];
+      if (t.startsWith('(')) tokens.push({ kind: 'str', value: t.slice(1, -1) });
+      else if (t.startsWith('<')) tokens.push({ kind: 'hex', value: t.slice(1, -1) });
+      else if (t.startsWith('/')) tokens.push({ kind: 'name', value: t.slice(1) });
+      else if (/^-?\d*\.?\d+$/.test(t)) tokens.push({ kind: 'num', value: t });
+      else tokens.push({ kind: 'op', value: t });
     }
-    switch (tok.value) {
-      case 'BT': {
-        tlm = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
-        tm = { ...tlm };
-        operandos = [];
-        break;
+
+    const nums = (ops: Tok[]): number[] =>
+      ops.filter((o) => o.kind === 'num').map((o) => Number(o.value));
+    const textOf = (o: Tok): string =>
+      o.kind === 'str' ? decodePdfTextString(o.value) : hexToText(o.value);
+    const lastName = (ops: Tok[]): Tok | undefined => {
+      for (let i = ops.length - 1; i >= 0; i--) {
+        if (ops[i].kind === 'name') return ops[i];
       }
-      case 'Tf': {
-        const sizeTok = lastNum(operandos);
-        if (sizeTok) fontSize = Math.abs(Number(sizeTok.value)) || fontSize;
-        operandos = [];
-        break;
+      return undefined;
+    };
+
+    let operandos: Tok[] = [];
+    for (const tok of tokens) {
+      if (tok.kind !== 'op') {
+        operandos.push(tok);
+        continue;
       }
-      case 'TL': {
-        const n = lastNum(operandos);
-        if (n) leading = Number(n.value);
-        operandos = [];
-        break;
-      }
-      case 'Tm': {
-        const v = nums(operandos);
-        if (v.length >= 6) {
-          tlm = { a: v[0], b: v[1], c: v[2], d: v[3], e: v[4], f: v[5] };
+      switch (tok.value) {
+        case 'BT': {
+          tlm = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
           tm = { ...tlm };
+          operandos = [];
+          break;
         }
-        operandos = [];
-        break;
-      }
-      case 'Td': {
-        const v = nums(operandos);
-        if (v.length >= 2) {
-          const ne = v[0] * tlm.a + v[1] * tlm.c + tlm.e;
-          const nf = v[0] * tlm.b + v[1] * tlm.d + tlm.f;
-          tlm = { ...tlm, e: ne, f: nf };
-          tm = { ...tlm };
+        case 'Tf': {
+          const sizeTok = lastNum(operandos);
+          if (sizeTok) fontSize = Math.abs(Number(sizeTok.value)) || fontSize;
+          operandos = [];
+          break;
         }
-        operandos = [];
-        break;
-      }
-      case 'TD': {
-        const v = nums(operandos);
-        if (v.length >= 2) {
-          leading = -v[1];
-          const ne = v[0] * tlm.a + v[1] * tlm.c + tlm.e;
-          const nf = v[0] * tlm.b + v[1] * tlm.d + tlm.f;
-          tlm = { ...tlm, e: ne, f: nf };
-          tm = { ...tlm };
+        case 'TL': {
+          const n = lastNum(operandos);
+          if (n) leading = Number(n.value);
+          operandos = [];
+          break;
         }
-        operandos = [];
-        break;
-      }
-      case 'T*': {
-        tlm = { ...tlm, f: tlm.f - leading };
-        tm = { ...tlm };
-        operandos = [];
-        break;
-      }
-      case 'Tj': {
-        const s = lastText(operandos);
-        if (s) {
-          items.push({ str: textOf(s), x: tm.e, y: tm.f, size: curSize() });
-        }
-        operandos = [];
-        break;
-      }
-      case "'": {
-        const s = lastText(operandos);
-        if (s) {
-          tlm = { ...tlm, f: tlm.f - leading };
-          items.push({ str: textOf(s), x: tlm.e, y: tlm.f, size: curSize() });
-        }
-        operandos = [];
-        break;
-      }
-      case 'TJ': {
-        // Array [(...) -120 (...)] TJ: textos y desplazamientos horizontales.
-        let dx = 0;
-        let run = '';
-        for (const o of operandos) {
-          if (o.kind === 'str' || o.kind === 'hex') {
-            run += textOf(o);
-          } else if (o.kind === 'num') {
-            if (run) {
-              items.push({
-                str: run,
-                x: tm.e + dx,
-                y: tm.f,
-                size: curSize(),
-              });
-              dx += measure.widthOfTextAtSize(run, curSize()) * 0.01;
-              run = '';
-            }
-            dx += (-Number(o.value) / 1000) * (curSize());
+        case 'Tm': {
+          const v = nums(operandos);
+          if (v.length >= 6) {
+            tlm = { a: v[0], b: v[1], c: v[2], d: v[3], e: v[4], f: v[5] };
+            tm = { ...tlm };
           }
+          operandos = [];
+          break;
         }
-        if (run) {
-          items.push({ str: run, x: tm.e + dx, y: tm.f, size: curSize() });
+        case 'Td': {
+          const v = nums(operandos);
+          if (v.length >= 2) {
+            const ne = v[0] * tlm.a + v[1] * tlm.c + tlm.e;
+            const nf = v[0] * tlm.b + v[1] * tlm.d + tlm.f;
+            tlm = { ...tlm, e: ne, f: nf };
+            tm = { ...tlm };
+          }
+          operandos = [];
+          break;
         }
-        operandos = [];
-        break;
+        case 'TD': {
+          const v = nums(operandos);
+          if (v.length >= 2) {
+            leading = -v[1];
+            const ne = v[0] * tlm.a + v[1] * tlm.c + tlm.e;
+            const nf = v[0] * tlm.b + v[1] * tlm.d + tlm.f;
+            tlm = { ...tlm, e: ne, f: nf };
+            tm = { ...tlm };
+          }
+          operandos = [];
+          break;
+        }
+        case 'T*': {
+          tlm = { ...tlm, f: tlm.f - leading };
+          tm = { ...tlm };
+          operandos = [];
+          break;
+        }
+        case 'Tj': {
+          const s = lastText(operandos);
+          if (s) {
+            const p = toWorld(tm.e, tm.f);
+            items.push({ str: textOf(s), x: p.x, y: p.y, size: curSize() });
+          }
+          operandos = [];
+          break;
+        }
+        case "'": {
+          const s = lastText(operandos);
+          if (s) {
+            tlm = { ...tlm, f: tlm.f - leading };
+            const p = toWorld(tlm.e, tlm.f);
+            items.push({ str: textOf(s), x: p.x, y: p.y, size: curSize() });
+          }
+          operandos = [];
+          break;
+        }
+        case 'TJ': {
+          // Array [(...) -120 (...)] TJ: textos y desplazamientos horizontales.
+          let dx = 0;
+          let run = '';
+          for (const o of operandos) {
+            if (o.kind === 'str' || o.kind === 'hex') {
+              run += textOf(o);
+            } else if (o.kind === 'num') {
+              if (run) {
+                const p = toWorld(tm.e + dx, tm.f);
+                items.push({
+                  str: run,
+                  x: p.x,
+                  y: p.y,
+                  size: curSize(),
+                });
+                dx += measure.widthOfTextAtSize(run, curSize()) * 0.01;
+                run = '';
+              }
+              dx += (-Number(o.value) / 1000) * (curSize());
+            }
+          }
+          if (run) {
+            const p = toWorld(tm.e + dx, tm.f);
+            items.push({ str: run, x: p.x, y: p.y, size: curSize() });
+          }
+          operandos = [];
+          break;
+        }
+        case 'q': {
+          ctmStack.push({ ...ctm });
+          operandos = [];
+          break;
+        }
+        case 'Q': {
+          const prev = ctmStack.pop();
+          if (prev) ctm = { ...prev };
+          operandos = [];
+          break;
+        }
+        case 'cm': {
+          const v = nums(operandos);
+          if (v.length >= 6) {
+            ctm = matMul({ a: v[0], b: v[1], c: v[2], d: v[3], e: v[4], f: v[5] }, ctm);
+          }
+          operandos = [];
+          break;
+        }
+        case 'Do': {
+          const nameTok = lastName(operandos);
+          const xobjContent = nameTok ? xobjects.get(nameTok.value) : undefined;
+          if (xobjContent && depth < MAX_DEPTH) {
+            processContent(xobjContent, { ...ctm }, depth + 1);
+          }
+          operandos = [];
+          break;
+        }
+        default:
+          operandos = [];
       }
-      default:
-        operandos = [];
     }
-  }
+  };
+
+  processContent(raw, { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, 0);
   return items;
 }
 
@@ -503,16 +655,18 @@ async function extractWithPdfjs(pdfBuffer: Buffer): Promise<string> {
     useSystemFonts: false,
     password: '',
   }).promise;
-    const out: string[] = [];
-    for (let i = 0; i < pdf.numPages; i++) {
+  const out: string[] = [];
+  const emptyPages: number[] = [];
+  for (let i = 0; i < pdf.numPages; i++) {
+    // Reconstruimos el orden de lectura: las "items" de pdfjs llegan en orden
+    // del stream, del cual muchas veces no es orden de lectura. Agrupamos por
+    // bandas horizontales (mismo height/2), y por X ascendente dentro de la
+    // banda; después ordenamos por Y desc.
+    type Item = { str: string; x: number; y: number; w: number; h: number };
+    let items: Item[] = [];
+    try {
       const page = await pdf.getPage(i + 1);
       const content = await page.getTextContent();
-      // Reconstruimos el orden de lectura: las "items" de pdfjs llegan en orden
-      // del stream, del cual muchas veces no es orden de lectura. Agrupamos por
-      // bandas horizontales (mismo height/2), y por X ascendente dentro de la
-      // banda; después ordenamos por Y desc;
-      type Item = { str: string; x: number; y: number; w: number; h: number };
-      const items: Item[] = [];
       for (const t of content.items) {
         if (!('str' in t) || !('transform' in t)) continue;
         const tr = t.transform as number[];
@@ -522,20 +676,49 @@ async function extractWithPdfjs(pdfBuffer: Buffer): Promise<string> {
         if (!t.str.trim()) continue;
         items.push({ str: t.str, x, y, w: t.width ?? 0, h });
       }
-      if (!items.length) {
-        out.push(`=== PÁGINA ${i + 1} ===\n(sin texto extraíble — posiblemente escaneada)`);
-        continue;
-      }
+    } catch {
+      // Página corrupta o ignorada por pdfjs: cae al parser manual.
+      items = [];
+    }
+    if (items.length) {
       items.sort((a, b) => {
         const bandA = Math.round(a.y / (a.h || 10));
         const bandB = Math.round(b.y / (b.h || 10));
         if (bandA !== bandB) return bandB - bandA; // Y descendente (arriba→abajo)
         return a.x - b.x;
       });
-      out.push(`=== PÁGINA ${i + 1} ===\n${items.map((it) => it.str).join('\n')}`);  }
+      out.push(`=== PÁGINA ${i + 1} ===\n${items.map((it) => it.str).join('\n')}`);
+    } else {
+      emptyPages.push(i);
+      out.push(`=== PÁGINA ${i + 1} ===\n<<EMPTY_${i}>>`);
+    }
+  }
+  if (emptyPages.length) {
+    // Fallback manual SOLO para las páginas que pdfjs no logró: el parser
+    // propio resuelve Form XObjects y streams que pdfjs a veces ignora.
+    try {
+      const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+      const dummy = {
+        widthOfTextAtSize: (s: string, n: number) => s.length * n * 0.5,
+      };
+      for (const i of emptyPages) {
+        if (i < 0 || i >= pdfDoc.getPageCount()) continue;
+        const manualItems = extractTextItems(pdfDoc.getPage(i), dummy);
+        if (manualItems.length) {
+          manualItems.sort((a, b) => (Math.abs(a.y - b.y) < 2 ? a.x - b.x : b.y - a.y));
+          out[i] = `=== PÁGINA ${i + 1} ===\n${manualItems.map((it) => it.str).join('\n')}`;
+        } else {
+          out[i] = `=== PÁGINA ${i + 1} ===\n(sin texto extraíble — posiblemente escaneada)`;
+        }
+      }
+    } catch {
+      // PDF ilegible por pdf-lib: quedan los marcadores <<EMPTY_i>>;
+      // extractPdfTextPerPage no debe caer entero al parser manual por una
+      // página individual.
+    }
+  }
   return out.join('\n\n');
 }
-
 /**
  * Fallback: extracción con el parser manual (operadores BT/ET, Tf, Tm, Tj,
  * TJ...). Devuelve el mismo formato "=== PÁGINA n ===".

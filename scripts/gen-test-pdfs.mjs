@@ -14,7 +14,7 @@ const p2 = d2.addPage([595, 842]);
 const f2 = await d2.embedFont(StandardFonts.Helvetica);
 // XObject Form crudo con content stream propio
 const xobjDict = d2.context.obj({
-  Type: 'XObject', Subtype: 'Form', FormType: 1,
+  Type: 'XObject', Subtype: PDFName.of('Form'), FormType: 1,
   BBox: [0, 0, 595, 842],
 });
 const xobj = d2.context.flateStream(
