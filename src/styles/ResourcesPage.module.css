@@ -154,6 +154,13 @@
   margin: 0 0 6px;
 }
 
+/* ===== Multas SUNAT ===== */
+.fines {
+  padding-block: var(--space-section);
+  padding-inline: var(--gutter);
+  background: var(--color-bg-light);
+}
+
 /* ===== Actualidad tributaria ===== */
 .articles {
   padding-block: var(--space-section);

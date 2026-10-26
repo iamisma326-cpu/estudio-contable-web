@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { IconCalendar, IconNews, IconSearchTerm, IconCalc } from '../components/icons/BrandIcons';
+import { IconCalendar, IconNews, IconSearchTerm, IconCalc, IconScale } from '../components/icons/BrandIcons';
 import useSEO from '../hooks/useSEO';
 import useRevealAnimations from '../hooks/useRevealAnimations';
 import ContactCta from '../components/ContactCta';
@@ -7,6 +7,7 @@ import DeadlineConsult from '../components/DeadlineConsult';
 import DeadlineTable from '../components/DeadlineTable';
 import ExchangeRate from '../components/ExchangeRate';
 import RegimeCalculator from '../components/RegimeCalculator';
+import MultaCalculator from '../components/MultaCalculator';
 import styles from '../styles/ResourcesPage.module.css';
 
 /**
@@ -173,6 +174,28 @@ export default function ResourcesPage() {
               </p>
               <RegimeCalculator />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Multas */}
+      <section className={styles.fines}>
+        <div className="container">
+          <div className={styles.sectionHead} data-reveal="up">
+            <IconScale size={26} className={styles.sectionIcon} />
+            <div>
+              <h2 className={styles.subtitle}>¿Cuánto cuesta tu multa?</h2>
+              <p className={styles.sectionLead}>
+                Las sanciones de SUNAT se expresan en UIT y casi todas se rebajan
+                si subsanas a tiempo. Elige la infracción y la etapa en la que
+                estás: te decimos el monto según las Tablas I y II del Código
+                Tributario y su reglamento de gradualidad.
+              </p>
+            </div>
+          </div>
+
+          <div data-reveal="up" data-reveal-delay="0.08">
+            <MultaCalculator />
           </div>
         </div>
       </section>
