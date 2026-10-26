@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import ChatBot from './components/ChatBot';
 import ScrollToTop from './components/ScrollToTop';
 import { ScrollTrigger } from './lib/gsap';
 
@@ -53,6 +54,7 @@ export default function App() {
       <ScrollTriggerSync />
       <div id="app-root">
         <ChromeChrome />
+        <ChatChrome />
         {/* tabIndex -1: es el destino del foco al cambiar de ruta */}
         <main id="contenido" tabIndex={-1}>
           <Suspense fallback={<PageLoader />}>
@@ -89,4 +91,15 @@ function ChromeFooter() {
   const { pathname } = useLocation();
   if (pathname === '/login' || pathname === '/admin') return null;
   return <Footer />;
+}
+
+/**
+ * El asistente vive fuera de las rutas: se monta una sola vez y la
+ * conversación sobrevive a los cambios de página. Como la cabecera y el
+ * pie, desaparece en las áreas internas (/login, /admin).
+ */
+function ChatChrome() {
+  const { pathname } = useLocation();
+  if (pathname === '/login' || pathname === '/admin') return null;
+  return <ChatBot />;
 }
