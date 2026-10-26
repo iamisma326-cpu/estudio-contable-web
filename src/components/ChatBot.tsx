@@ -269,11 +269,25 @@ export default function ChatBot() {
 
                   {showExtras && m.links && (
                     <div className={styles.links}>
-                      {m.links.map((l) => (
-                        <Link key={l.to + l.label} to={l.to} className={styles.linkBtn}>
-                          {l.label} <ArrowRight size={14} />
-                        </Link>
-                      ))}
+                      {/* Dos clases de acción: ruta interna del sitio o enlace
+                          externo (WhatsApp y redes) que abre en otra pestaña. */}
+                      {m.links.map((l) =>
+                        'href' in l ? (
+                          <a
+                            key={l.href}
+                            href={l.href}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={styles.linkBtn}
+                          >
+                            {l.label} <ArrowRight size={14} />
+                          </a>
+                        ) : (
+                          <Link key={l.to} to={l.to} className={styles.linkBtn}>
+                            {l.label} <ArrowRight size={14} />
+                          </Link>
+                        )
+                      )}
                     </div>
                   )}
 

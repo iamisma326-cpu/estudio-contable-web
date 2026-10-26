@@ -13,15 +13,17 @@
  * (sunatSchedule) para que el asistente nunca contradiga una página publicada.
  */
 import { upcomingDeadlines, formatLongDate } from './sunatSchedule';
+import { WHATSAPP_DISPLAY, WHATSAPP_GREETING, whatsappLink } from '../config/contact';
 
 /* ============================================================
    Tipos
    ============================================================ */
 
-export interface ChatLink {
-  label: string;
-  to: string;
-}
+/**
+ * Acción del asistente: o navega dentro del sitio (`to`) o abre un enlace
+ * externo en otra pestaña (`href`), como el paso directo a WhatsApp.
+ */
+export type ChatLink = { label: string; to: string } | { label: string; href: string };
 
 export interface ChatReply {
   /** Texto con saltos de párrafo y **negritas** opcionales */
@@ -267,28 +269,89 @@ const INTENTS: ChatIntent[] = [
       'que ofrece',
       'que ofrecen',
       'que tratan',
-      'asesoria contable',
-      'asesoria tributaria',
       'que incluyen',
+      'catalogo',
     ],
     reply: {
       text:
-        'Estos son los seis pilares del estudio:\n\n' +
-        '• **Outsourcing contable** — contabilidad al día, conciliaciones y estados financieros mensuales.\n' +
-        '• **Asesoría tributaria** — declaraciones, cronograma y representación ante SUNAT.\n' +
-        '• **Planillas y laboral** — PLAME, CTS, gratificaciones, T-Registro.\n' +
-        '• **Auditoría** — revisión de estados financieros y preparación ante fiscalización.\n' +
-        '• **Constitución de empresa** — del RUC a la firma electrónica.\n' +
-        '• **Asesoría financiera** — presupuestos, proyecciones y rentabilidad.\n\n' +
-        '¿Sobre cuál quieres que profundice?',
-      suggestions: ['Outsourcing contable', 'Planillas y laboral', 'Auditoría', '¿Cuánto cuesta?'],
-      links: [{ label: 'Ver servicios en detalle', to: '/servicios' }],
+        'Estos son los seis servicios del estudio, cada uno en su categoría (igual que en la página de Servicios):\n\n' +
+        '• **Contabilidad** — Outsourcing contable: contabilidad al día, conciliaciones y estados financieros mensuales.\n' +
+        '• **Impuestos** — Asesoría tributaria: declaraciones, cronograma y representación ante SUNAT.\n' +
+        '• **Recursos humanos** — Planillas y laboral: PLAME, CTS, gratificaciones, T-Registro.\n' +
+        '• **Garantía** — Auditoría y revisión: estados financieros y preparación ante fiscalización.\n' +
+        '• **Inicio** — Constitución de empresas: de la reserva de nombre al RUC con clave SOL.\n' +
+        '• **Decisiones** — Asesoría financiera: presupuestos, flujo de caja y rentabilidad.\n\n' +
+        'Puedo darte el detalle de cada uno (qué incluye y desde cuánto cuesta), o contarte **cómo trabajamos y qué necesitamos de ti**.',
+      suggestions: ['Outsourcing contable', 'Asesoría tributaria', 'Planillas y laboral', 'Auditoría'],
+      links: [{ label: 'Ver el catálogo de servicios', to: '/servicios' }],
+    },
+  },
+  {
+    id: 'nosotros',
+    keywords: [
+      'quienes son',
+      'quienes somos',
+      'sobre el estudio',
+      'sobre ustedes',
+      'cuantos años',
+      'experiencia',
+      'trayectoria',
+      'colegiados',
+      'quien dirige',
+      'quien lo dirige',
+      'fundador',
+      'se fundo',
+      'historia del estudio',
+      'miguel sanchez delgado',
+    ],
+    reply: {
+      text:
+        '**Sánchez Delgado & Asociados** es un estudio contable y tributario con oficina en San Isidro, Lima.\n\n' +
+        '• Lo fundó en **2010** el CPC **Miguel Ángel Sánchez Delgado**, contador público colegiado.\n' +
+        '• Hoy somos **14 profesionales** y llevamos la contabilidad de **más de 320 empresas** en todo el Perú.\n' +
+        '• El equipo lo completan el CPC **Jorge Gutiérrez** (Auditoría), la CPC **Lucía Paredes** (Tributario) y el CPC **Diego Rojas** (Planillas).\n' +
+        '• Nuestras tres reglas: integridad para decirte la verdad tributaria, proactividad para avisarte antes de que SUNAT escriba y un **contador asignado** que conoce tu negocio.\n\n' +
+        '¿Quieres que te cuente qué hacemos o prefieres agendar el diagnóstico gratuito?',
+      suggestions: ['¿Qué servicios tienen?', 'Quiero un diagnóstico gratuito'],
+      links: [{ label: 'Conocer el estudio', to: '/nosotros' }],
+    },
+  },
+  {
+    id: 'categorias',
+    keywords: [
+      'categorias',
+      'categoria',
+      'rubros',
+      'rubro',
+      'areas',
+      'que areas',
+      'tipos de servicio',
+      'que tipos de servicio',
+      'clasificacion',
+      'como se organizan',
+      'lineas de servicio',
+      'ramas',
+    ],
+    reply: {
+      text:
+        'En **Servicios** estamos organizados en seis categorías, una por momento del negocio:\n\n' +
+        '• **Contabilidad** — Outsourcing contable.\n' +
+        '• **Impuestos** — Asesoría tributaria.\n' +
+        '• **Recursos humanos** — Planillas y laboral.\n' +
+        '• **Garantía** — Auditoría y revisión.\n' +
+        '• **Inicio** — Constitución de empresas.\n' +
+        '• **Decisiones** — Asesoría financiera.\n\n' +
+        'Cada categoría tiene su servicio con el detalle de lo que incluye y su honorario desde. Dime cuál te interesa.',
+      suggestions: ['Outsourcing contable', 'Asesoría tributaria', 'Asesoría financiera', 'Auditoría'],
+      links: [{ label: 'Ver el catálogo de servicios', to: '/servicios' }],
     },
   },
   {
     id: 'outsourcing',
     keywords: [
       'outsourcing',
+      'contabilidad',
+      'asesoria contable',
       'llevan mi contabilidad',
       'llevar mi contabilidad',
       'contabilidad completa',
@@ -307,6 +370,69 @@ const INTENTS: ChatIntent[] = [
         'Trabajamos en la nube: tú subes facturas y comprobantes, nosotros los ordenamos y presentamos el PDT 621 cuando toca.',
       suggestions: ['¿Cuánto cuesta?', '¿Qué revisan en el diagnóstico?'],
       links: [{ label: 'Ver servicios', to: '/servicios' }],
+    },
+  },
+  {
+    id: 'tributaria',
+    keywords: [
+      'asesoria tributaria',
+      'tributaria',
+      'tributario',
+      'planificacion fiscal',
+      'declaraciones mensuales',
+      'pagos a cuenta',
+      'formulario 710',
+      'fv 710',
+      'percepciones',
+      'retenciones',
+      'requerimiento sunat',
+      'requerimientos sunat',
+      'opinion escrita',
+      'devolucion de impuestos',
+    ],
+    reply: {
+      text:
+        'La **asesoría tributaria** (categoría *Impuestos*) es el servicio para cumplir con SUNAT pagando solo lo que corresponde. Incluye:\n\n' +
+        '• Declaraciones mensuales y pagos a cuenta.\n' +
+        '• DJ Anual de Impuesto a la Renta (formulario 710).\n' +
+        '• Elección y cambio de régimen: NRUS, RER, RMT o Régimen General.\n' +
+        '• Recuperación de percepciones y retenciones.\n' +
+        '• Atención de cartas y requerimientos de SUNAT.\n' +
+        '• Opinión escrita sobre operaciones puntuales.\n\n' +
+        'Honorarios: **desde S/ 250 al mes**, según tu volumen de operaciones.',
+      suggestions: ['¿Qué régimen me conviene?', 'Tengo declaraciones atrasadas', '¿Cuánto cuesta?'],
+      links: [{ label: 'Ver el servicio completo', to: '/servicios' }],
+    },
+  },
+  {
+    id: 'financiera',
+    keywords: [
+      'asesoria financiera',
+      'financiera',
+      'financiero',
+      'flujo de caja',
+      'presupuesto',
+      'presupuestos',
+      'rentabilidad',
+      'cuadro de mando',
+      'indicadores',
+      'valuacion',
+      'informacion para bancos',
+      'proyecciones',
+      'control de gastos',
+    ],
+    reply: {
+      text:
+        'La **asesoría financiera** (categoría *Decisiones*) convierte tu contabilidad en herramientas para decidir. Incluye:\n\n' +
+        '• Presupuesto anual y control de desviaciones.\n' +
+        '• Flujo de caja proyectado a 12 meses.\n' +
+        '• Cuadro de mando con los indicadores del negocio.\n' +
+        '• Preparación de la información que piden los bancos.\n' +
+        '• Valuación sencilla para socios o compradores.\n' +
+        '• Sesiones mensuales de lectura financiera.\n\n' +
+        'Honorarios: **desde S/ 600 al mes**, según el tamaño de tu operación.',
+      suggestions: ['¿Cuánto cuesta?', 'Quiero un diagnóstico gratuito'],
+      links: [{ label: 'Ver el servicio completo', to: '/servicios' }],
     },
   },
   {
@@ -329,11 +455,15 @@ const INTENTS: ChatIntent[] = [
     ],
     reply: {
       text:
-        'Depende del volumen de operaciones y de si tienes planilla. Como referencia de mercado en Lima:\n\n' +
-        '• Empresa pequeña en **RER o RMT** con hasta 50 comprobantes al mes: **S/ 250 – 450** mensuales.\n' +
-        '• **Régimen General** o con varios trabajadores en planilla: **S/ 500 – 1,500** mensuales.\n\n' +
-        'Nosotros entregamos una propuesta con **precio fijo** después del diagnóstico gratuito: sin sorpresas a mitad de año.',
-      suggestions: ['¿Qué revisan en el diagnóstico?', 'Quiero un diagnóstico gratuito'],
+        'Dependen de tus comprobantes y de tu planilla. Estos son los honorarios publicados en nuestra página de servicios:\n\n' +
+        '• **Outsourcing contable** — desde S/ 350 al mes.\n' +
+        '• **Asesoría tributaria** — desde S/ 250 al mes.\n' +
+        '• **Planillas y laboral** — desde S/ 30 por trabajador.\n' +
+        '• **Auditoría y revisión** — cotización por proyecto.\n' +
+        '• **Constitución de empresas** — desde S/ 900, pago único.\n' +
+        '• **Asesoría financiera** — desde S/ 600 al mes.\n\n' +
+        'El precio final es **fijo y por escrito**, y lo confirmamos después del diagnóstico gratuito según tu volumen de comprobantes y trabajadores.',
+      suggestions: ['¿Cuáles son las condiciones de atención?', 'Quiero un diagnóstico gratuito'],
       links: [{ label: 'Pedir una propuesta', to: '/contacto' }],
     },
   },
@@ -364,12 +494,58 @@ const INTENTS: ChatIntent[] = [
         'El primer diagnóstico dura **45 minutos** y es **gratuito y sin compromiso**.\n\n' +
         'Revisamos tu situación actual y te entregamos un informe con los riesgos detectados y las oportunidades de ahorro, aunque decidas no trabajar con nosotros.\n\n' +
         'Se hace **presencial en San Isidro** o **por videollamada**.',
-      suggestions: ['¿Qué revisan en el diagnóstico?', '¿Cuánto cuesta después?'],
+      suggestions: ['¿Qué necesito tener a mano?', '¿Cuánto cuesta después?', '¿Cuáles son las condiciones de atención?'],
       links: [{ label: 'Agendar diagnóstico gratuito', to: '/contacto' }],
     },
   },
 
   /* ---------- Temas tributarios ---------- */
+  {
+    id: 'condiciones',
+    keywords: [
+      'condiciones',
+      'condiciones de atencion',
+      'como trabajan',
+      'como trabajamos',
+      'como es el servicio',
+      'como funciona el servicio',
+      'forma de trabajo',
+      'modalidad',
+      'a distancia',
+      'remoto',
+      'virtual',
+      'online',
+      'videollamada',
+      'provincia',
+      'que necesito para empezar',
+      'que necesito tener',
+      'que datos necesitan',
+      'requisitos',
+      'forma de pago',
+      'honorarios fijos',
+      'contrato',
+      'plazos de entrega',
+      'cuando entregan',
+      'quien me atiende',
+      'contador asignado',
+      'confidencialidad',
+      'que incluye el servicio',
+    ],
+    reply: {
+      text:
+        'Estas son nuestras **condiciones de atención**, tal como trabajamos:\n\n' +
+        '• **Primer paso:** diagnóstico de **45 minutos**, gratuito y sin compromiso, presencial en San Isidro o por videollamada.\n' +
+        '• **Modalidad:** trabajo en la nube. Tú subes tus comprobantes y nosotros los procesamos; atendemos a empresas de Lima y de todo el Perú de forma remota.\n' +
+        '• **Quién te atiende:** un **contador asignado** que conoce tu negocio, no un call center.\n' +
+        '• **Respuesta:** menos de **24 horas hábiles**, y te avisamos antes de cada vencimiento.\n' +
+        '• **Horario de atención:** Lun–Vie 8:30–18:00 · Sáb 9:00–13:00.\n' +
+        '• **Honorarios:** fijos y acordados **por escrito** antes de empezar; se confirman en la propuesta según tus comprobantes, tus trabajadores y tu régimen.\n' +
+        '• **Entregables:** estados financieros del mes y la declaración presentada dentro del cronograma de tu RUC.\n\n' +
+        'Para cotizar necesitamos saber cuántos comprobantes emites al mes, cuántos trabajadores tienes en planilla y desde cuándo no declaras, si fuera el caso.',
+      suggestions: ['Quiero un diagnóstico gratuito', '¿Cuánto cuesta?', '¿Qué servicios tienen?'],
+      links: [{ label: 'Agendar diagnóstico gratuito', to: '/contacto' }],
+    },
+  },
   {
     id: 'cronograma',
     keywords: [
@@ -563,9 +739,11 @@ const INTENTS: ChatIntent[] = [
     reply: {
       text:
         'Hacemos **auditoría externa** y también preparación previa ante fiscalización:\n\n' +
-        '• Revisión de estados financieros y de obligaciones formales.\n' +
+        '• Auditoría de estados financieros con Normas Internacionales de Auditoría (NIA) y dictamen.\n' +
+        '• Revisión de información financiera, auditorías internas y de procesos.\n' +
+        '• Auditorías tributarias preventivas y due diligence contable.\n' +
         '• Detección de riesgos antes de que SUNAT los encuentre.\n' +
-        '• Acompañamiento en vistas de oposición y descargos.\n\n' +
+        '• Acompañamiento en vistas de oposición y descargos, y carta a la gerencia.\n\n' +
         'Si recibiste una carta de SUNAT, cuéntanos la fecha: los plazos de respuesta son cortos.',
       suggestions: ['Hablar con un asesor', 'Quiero un diagnóstico gratuito'],
       links: [{ label: 'Solicitar auditoría', to: '/contacto' }],
@@ -628,17 +806,25 @@ const INTENTS: ChatIntent[] = [
       'sede',
       'ubicacion',
       'redes sociales',
+      'redes',
+      'instagram',
+      'facebook',
+      'linkedin',
     ],
     reply: {
       text:
-        'Estamos en **Av. Canaval y Moreyra 480, Piso 12, Of. 1203 — San Isidro, Lima**.\n\n' +
+        'Estamos en **Av. Canaval y Moreyra 480, Piso 12, Of. 1203 — San Isidro, Lima** (ahí tienes el mapa para llegar).\n\n' +
         '• Teléfono: **(01) 480-2600**\n' +
-        '• WhatsApp: **+51 922 375 598**\n' +
+        '• WhatsApp: **' + WHATSAPP_DISPLAY + '**\n' +
         '• Correo: **contacto@sanchezdelgado.pe**\n' +
-        '• Horario: **Lun–Vie 8:30–18:00 · Sáb 9:00–13:00**\n\n' +
-        'Respondemos en menos de 24 horas hábiles.',
-      suggestions: ['Quiero un diagnóstico gratuito', '¿Qué servicios tienen?'],
-      links: [{ label: 'Ir a Contacto', to: '/contacto' }],
+        '• Horario: **Lun–Vie 8:30–18:00 · Sáb 9:00–13:00**\n' +
+        '• Redes: nos encuentras como **sanchezdelgadope** en Facebook, Instagram y LinkedIn.\n\n' +
+        'Respondemos en menos de 24 horas hábiles. Si prefieres, escríbenos por WhatsApp ahora mismo.',
+      suggestions: ['¿Cuáles son las condiciones de atención?', '¿Qué servicios tienen?'],
+      links: [
+        { label: 'Escribir por WhatsApp', href: whatsappLink(WHATSAPP_GREETING) },
+        { label: 'Ir a Contacto', to: '/contacto' },
+      ],
     },
   },
   {
@@ -646,12 +832,14 @@ const INTENTS: ChatIntent[] = [
     keywords: ['ayuda', 'que sabes', 'que puedes hacer', 'menu', 'opciones', 'como te uso', 'para que sirves'],
     reply: {
       text:
-        'Puedo ayudarte con esto, entre otros temas:\n\n' +
-        '• **Servicios y honorarios** — qué hacemos y cuánto cuesta.\n' +
+        'Puedo con esto:\n\n' +
+        '• **Qué ofrecemos** — los seis servicios del estudio y las categorías del catálogo.\n' +
+        '• **Detalle por servicio** — qué incluye cada uno y desde cuánto cuesta.\n' +
+        '• **Condiciones de atención** — modalidad, plazos, honorarios y qué necesitas.\n' +
         '• **Régimen tributario** — RER, RMT, Régimen General o NRUS.\n' +
         '• **Vencimientos SUNAT** — dime el último dígito de tu RUC y te doy tu fecha.\n' +
         '• **Planillas, multas y declaraciones atrasadas.**\n' +
-        '• **Contacto y diagnóstico gratuito.**\n\n' +
+        '• **Contacto** — ubicación, horarios, teléfono, WhatsApp y redes.\n\n' +
         'Escríbelo con tus palabras, yo lo entiendo.',
       suggestions: ['¿Cuánto cuesta?', '¿Cuándo vence mi declaración?', 'Hablar con un asesor'],
     },
