@@ -10,3 +10,4 @@ dev.log
 .env*
 .vercel-build/
 .neon
+.playwright-cli
