@@ -98,7 +98,7 @@ export default function ResourcesPage() {
 
   /** El bucket es privado: se pide una URL firmada (5 min) al abrir el adjunto. */
   const download = useCallback(async (id: string) => {
-    const res = await apiGet<{ url: string }>(`/api/resource-download?id=${id}`);
+    const res = await apiGet<{ url: string }>(`/api/resources?id=${id}`);
     if (res.ok && res.data?.url) {
       window.open(res.data.url, '_blank', 'noopener,noreferrer');
     }
