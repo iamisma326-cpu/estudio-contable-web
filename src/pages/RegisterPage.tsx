@@ -13,15 +13,9 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useSEO from '../hooks/useSEO';
 import { authClient } from '../lib/auth';
+import { authErrorMessage, isNetworkError } from '../lib/authError';
 import { apiSend, clearTokenCache } from '../lib/api';
 import styles from '../styles/LoginPage.module.css';
-
-const ERROR_MESSAGES: Record<string, string> = {
-  USER_ALREADY_EXISTS: 'Ya existe una cuenta con ese correo. Inicia sesión.',
-  EMAIL_ALREADY_EXISTS: 'Ya existe una cuenta con ese correo. Inicia sesión.',
-  PASSWORD_TOO_SHORT: 'La contraseña debe tener al menos 8 caracteres.',
-  INVALID_EMAIL: 'El correo no es válido.',
-};
 
 export default function RegisterPage() {
   useSEO({
@@ -75,8 +69,7 @@ export default function RegisterPage() {
       });
 
       if (authError) {
-        const code = String(authError.code ?? '');
-        setError(ERROR_MESSAGES[code] ?? authError.message ?? 'No se pudo crear la cuenta.');
+        setError(authErrorMessage(authError) ?? 'No se pudo crear la cuenta.');
         return;
       }
 
@@ -87,8 +80,13 @@ export default function RegisterPage() {
       });
 
       navigate('/recursos', { replace: true });
-    } catch {
-      setError('Error de red. Comprueba tu conexión.');
+    } catch (err) {
+      setError(
+        authErrorMessage(err) ??
+          (isNetworkError(err)
+            ? 'No se pudo conectar con el servicio de acceso. Comprueba tu conexión.'
+            : 'No se pudo crear la cuenta.')
+      );
     } finally {
       setSubmitting(false);
     }

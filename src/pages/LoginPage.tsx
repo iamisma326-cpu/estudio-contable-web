@@ -15,6 +15,7 @@ import type { FormEvent } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import useSEO from '../hooks/useSEO';
 import { authClient, identifierToEmail } from '../lib/auth';
+import { authErrorMessage, isNetworkError } from '../lib/authError';
 import { apiGet, clearTokenCache } from '../lib/api';
 import styles from '../styles/LoginPage.module.css';
 
@@ -22,14 +23,7 @@ interface LocationState {
   from?: string;
 }
 
-const ERROR_MESSAGES: Record<string, string> = {
-  INVALID_EMAIL_OR_PASSWORD: 'Usuario o contraseña incorrectos.',
-  INVALID_PASSWORD: 'Usuario o contraseña incorrectos.',
-  USER_NOT_FOUND: 'Usuario o contraseña incorrectos.',
-  BANNED_USER: 'Tu cuenta está suspendida. Escríbenos para revisarlo.',
-  USER_BANNED: 'Tu cuenta está suspendida. Escríbenos para revisarlo.',
-  EMAIL_NOT_VERIFIED: 'Debes verificar tu correo antes de entrar.',
-};
+const BANNED_MESSAGE = 'Tu cuenta está suspendida. Escríbenos para revisarlo.';
 
 export default function LoginPage() {
   useSEO({
@@ -79,13 +73,7 @@ export default function LoginPage() {
       const { error: authError } = await authClient.signIn.email({ email, password });
 
       if (authError) {
-        const code = String(authError.code ?? '');
-        setError(
-          ERROR_MESSAGES[code] ??
-            (authError.status === 403
-              ? 'Tu cuenta está suspendida. Escríbenos para revisarlo.'
-              : 'No se pudo iniciar sesión. Inténtalo de nuevo.')
-        );
+        setError(authErrorMessage(authError) ?? 'No se pudo iniciar sesión.');
         return;
       }
 
@@ -95,15 +83,22 @@ export default function LoginPage() {
       const isAdmin = me.data?.user.role === 'admin';
 
       if (me.status === 403) {
-        setError(ERROR_MESSAGES.BANNED_USER);
+        setError(BANNED_MESSAGE);
         await authClient.signOut();
         return;
       }
 
       const destination = from && !(isAdmin && from === '/recursos') ? from : isAdmin ? '/admin' : '/recursos';
       navigate(destination, { replace: true });
-    } catch {
-      setError('Error de red. Comprueba tu conexión.');
+    } catch (err) {
+      // El 401 de sign-in llega por excepción: se traduce, no se etiqueta
+      // como problema de red.
+      setError(
+        authErrorMessage(err) ??
+          (isNetworkError(err)
+            ? 'No se pudo conectar con el servicio de acceso. Comprueba tu conexión.'
+            : 'No se pudo iniciar sesión.')
+      );
     } finally {
       setSubmitting(false);
     }

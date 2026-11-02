@@ -12,6 +12,7 @@ import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import useSEO from '../hooks/useSEO';
 import { authClient } from '../lib/auth';
+import { authErrorMessage, isNetworkError } from '../lib/authError';
 import styles from '../styles/LoginPage.module.css';
 
 export default function RecoverPage() {
@@ -42,12 +43,17 @@ export default function RecoverPage() {
         redirectTo: `${window.location.origin}/restablecer`,
       });
       if (authError) {
-        setError(authError.message ?? 'No se pudo enviar el correo.');
+        setError(authErrorMessage(authError) ?? 'No se pudo enviar el correo.');
         return;
       }
       setSent(true);
-    } catch {
-      setError('Error de red. Comprueba tu conexión.');
+    } catch (err) {
+      setError(
+        authErrorMessage(err) ??
+          (isNetworkError(err)
+            ? 'No se pudo conectar con el servicio de acceso. Comprueba tu conexión.'
+            : 'No se pudo enviar el correo.')
+      );
     } finally {
       setSubmitting(false);
     }

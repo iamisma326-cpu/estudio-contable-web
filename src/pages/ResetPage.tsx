@@ -10,13 +10,9 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import useSEO from '../hooks/useSEO';
 import { authClient } from '../lib/auth';
+import { authErrorMessage, isNetworkError } from '../lib/authError';
 import { clearTokenCache } from '../lib/api';
 import styles from '../styles/LoginPage.module.css';
-
-const ERROR_MESSAGES: Record<string, string> = {
-  INVALID_TOKEN: 'El enlace no es válido o ya expiró. Pide uno nuevo.',
-  PASSWORD_TOO_SHORT: 'La contraseña debe tener al menos 8 caracteres.',
-};
 
 export default function ResetPage() {
   useSEO({
@@ -51,14 +47,18 @@ export default function ResetPage() {
     try {
       const { error: authError } = await authClient.resetPassword({ newPassword: password, token });
       if (authError) {
-        const code = String(authError.code ?? '');
-        setError(ERROR_MESSAGES[code] ?? authError.message ?? 'No se pudo cambiar la contraseña.');
+        setError(authErrorMessage(authError) ?? 'No se pudo cambiar la contraseña.');
         return;
       }
       clearTokenCache();
       navigate('/login', { replace: true });
-    } catch {
-      setError('Error de red. Comprueba tu conexión.');
+    } catch (err) {
+      setError(
+        authErrorMessage(err) ??
+          (isNetworkError(err)
+            ? 'No se pudo conectar con el servicio de acceso. Comprueba tu conexión.'
+            : 'No se pudo cambiar la contraseña.')
+      );
     } finally {
       setSubmitting(false);
     }
