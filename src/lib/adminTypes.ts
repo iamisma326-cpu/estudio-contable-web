@@ -62,6 +62,9 @@ export interface AdminResource {
   href: string | null;
   is_active: boolean;
   sort_order: number;
+  file_key: string | null;
+  file_name: string | null;
+  file_size: number | null;
   created_at: string;
 }
 

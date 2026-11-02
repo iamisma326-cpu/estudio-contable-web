@@ -21,6 +21,9 @@ interface ResourceRow {
   href: string | null;
   is_active: boolean;
   sort_order: number;
+  file_key: string | null;
+  file_name: string | null;
+  file_size: number | null;
   created_at: string;
 }
 
@@ -48,7 +51,8 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
 
   if (req.method === 'GET') {
     const resources = await query<ResourceRow>(
-      `SELECT id, slug, title, description, category, href, is_active, sort_order, created_at
+      `SELECT id, slug, title, description, category, href, is_active, sort_order,
+              file_key, file_name, file_size, created_at
          FROM public.resources
         ORDER BY sort_order, title`
     );
@@ -81,7 +85,8 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     const created = await queryOne<ResourceRow>(
       `INSERT INTO public.resources (slug, title, description, category, href, sort_order)
        VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, slug, title, description, category, href, is_active, sort_order, created_at`,
+       RETURNING id, slug, title, description, category, href, is_active, sort_order,
+                 file_key, file_name, file_size, created_at`,
       [slug, title, description, category, href, sortOrder]
     );
     res.status(201).json({ ok: true, resource: created });
@@ -104,9 +109,13 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
               href        = COALESCE($5, href),
               is_active   = COALESCE($6, is_active),
               sort_order  = COALESCE($7, sort_order),
+              file_key    = COALESCE($8, file_key),
+              file_name   = COALESCE($9, file_name),
+              file_size   = COALESCE($10, file_size),
               updated_at  = now()
         WHERE id = $1
-        RETURNING id, slug, title, description, category, href, is_active, sort_order, created_at`,
+        RETURNING id, slug, title, description, category, href, is_active, sort_order,
+                  file_key, file_name, file_size, created_at`,
       [
         id,
         typeof body?.title === 'string' && body.title.trim() ? body.title.trim() : null,
@@ -115,6 +124,9 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
         typeof body?.href === 'string' ? body.href.trim() || null : null,
         typeof body?.is_active === 'boolean' ? body.is_active : null,
         Number.isFinite(Number(body?.sort_order)) ? Number(body?.sort_order) : null,
+        typeof body?.file_key === 'string' && body.file_key.trim() ? body.file_key.trim() : null,
+        typeof body?.file_name === 'string' && body.file_name.trim() ? body.file_name.trim() : null,
+        Number.isFinite(Number(body?.file_size)) ? Number(body?.file_size) : null,
       ]
     );
 

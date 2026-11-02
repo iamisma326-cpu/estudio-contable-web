@@ -26,7 +26,8 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
 
   if (req.method === 'GET') {
     const resources = await query(
-      `SELECT id, slug, title, description, category, href, sort_order
+      `SELECT id, slug, title, description, category, href, sort_order,
+              (file_key IS NOT NULL) AS has_file, file_name
          FROM public.resources
         WHERE is_active = true
         ORDER BY sort_order, title`

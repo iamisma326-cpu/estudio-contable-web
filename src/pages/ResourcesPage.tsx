@@ -71,7 +71,15 @@ export default function ResourcesPage() {
   const [activeDigit, setActiveDigit] = useState<number | null>(null);
 
   // Biblioteca del área privada: catálogo administrado desde /admin.
-  const [library, setLibrary] = useState<{ id: string; title: string; description: string; category: string; href: string | null }[]>([]);
+  const [library, setLibrary] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    category: string;
+    href: string | null;
+    has_file: boolean;
+    file_name: string | null;
+  }[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,6 +94,14 @@ export default function ResourcesPage() {
 
   const recordView = useCallback((id: string) => {
     void apiSend('/api/resources', 'POST', { id });
+  }, []);
+
+  /** El bucket es privado: se pide una URL firmada (5 min) al abrir el adjunto. */
+  const download = useCallback(async (id: string) => {
+    const res = await apiGet<{ url: string }>(`/api/resource-download?id=${id}`);
+    if (res.ok && res.data?.url) {
+      window.open(res.data.url, '_blank', 'noopener,noreferrer');
+    }
   }, []);
 
   const handleDigitChange = useCallback((digit: number | null) => {
@@ -138,17 +154,24 @@ export default function ResourcesPage() {
 
             <div className={styles.libraryGrid} data-reveal-group="up">
               {library.map((resource) => (
-                <a
-                  key={resource.id}
-                  href={resource.href ?? undefined}
-                  className={styles.libraryCard}
-                  data-reveal
-                  onClick={() => recordView(resource.id)}
-                >
+                <div key={resource.id} className={styles.libraryCard} data-reveal>
                   <span className={styles.libraryTag}>{resource.category}</span>
-                  <h3>{resource.title}</h3>
+                  <h3>
+                    <a href={resource.href ?? undefined} onClick={() => recordView(resource.id)}>
+                      {resource.title}
+                    </a>
+                  </h3>
                   <p>{resource.description}</p>
-                </a>
+                  {resource.has_file && (
+                    <button
+                      type="button"
+                      className={styles.downloadBtn}
+                      onClick={() => void download(resource.id)}
+                    >
+                      Descargar adjunto
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           </div>

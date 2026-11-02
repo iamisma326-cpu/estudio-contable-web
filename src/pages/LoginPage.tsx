@@ -163,6 +163,9 @@ export default function LoginPage() {
         <p className={styles.switch}>
           ¿Aún no tienes cuenta? <Link to="/registro">Crear una cuenta</Link>
         </p>
+        <p className={styles.switch}>
+          <Link to="/recuperar">¿Olvidaste tu contraseña?</Link>
+        </p>
 
         <Link to="/" className={styles.back}>
           ← Volver al sitio

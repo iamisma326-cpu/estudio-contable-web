@@ -16,6 +16,8 @@ const RentaPage = lazy(() => import('./pages/RentaPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const RecoverPage = lazy(() => import('./pages/RecoverPage'));
+const ResetPage = lazy(() => import('./pages/ResetPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 
 function PageLoader() {
@@ -78,6 +80,8 @@ export default function App() {
               <Route path="/contacto" element={<ContactPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/registro" element={<RegisterPage />} />
+              <Route path="/recuperar" element={<RecoverPage />} />
+              <Route path="/restablecer" element={<ResetPage />} />
               <Route
                 path="/admin"
                 element={
@@ -100,7 +104,13 @@ export default function App() {
  * En /login y /admin ocultamos la cabecera y el pie del sitio: la
  * experiencia interna no debe parecerse al marketing público.
  */
-const INTERNAL_ROUTES = new Set(['/login', '/registro', '/admin']);
+const INTERNAL_ROUTES = new Set([
+  '/login',
+  '/registro',
+  '/recuperar',
+  '/restablecer',
+  '/admin',
+]);
 
 function ChromeChrome() {
   const { pathname } = useLocation();

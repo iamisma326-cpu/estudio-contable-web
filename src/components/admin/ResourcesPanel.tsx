@@ -1,11 +1,15 @@
 /**
- * Catálogo de recursos del área privada: alta, edición, publicación y baja.
- * Lo que se publica aquí es exactamente lo que ve el cliente en /recursos.
+ * Catálogo de recursos del área privada: alta, edición, publicación, adjunto
+ * privado y baja. Lo que se publica aquí es exactamente lo que ve el cliente
+ * en /recursos.
+ *
+ * Los adjuntos van a Object Storage (bucket privado): se sube con un PUT
+ * prefirmado y la descarga se firma al momento, nunca por URL pública.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { apiGet, apiSend } from '../../lib/api';
+import { apiGet, apiSend, getAuthToken } from '../../lib/api';
 import type { AdminResource, ResourcesResponse } from '../../lib/adminTypes';
 import styles from '../../styles/AdminPage.module.css';
 
@@ -25,6 +29,12 @@ const EMPTY_FORM: FormState = {
   sort_order: '0',
 };
 
+function formatSize(bytes: number | null): string {
+  if (!bytes) return '';
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function ResourcesPanel() {
   const [resources, setResources] = useState<AdminResource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +43,7 @@ export default function ResourcesPanel() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -56,12 +67,56 @@ export default function ResourcesPanel() {
       href: resource.href ?? '',
       sort_order: String(resource.sort_order),
     });
+    setFile(null);
     setNotice(null);
   }
 
   function resetForm() {
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setFile(null);
+  }
+
+  /** Sube el binario al bucket privado y lo vincula al recurso. */
+  async function uploadFile(resourceId: string, selected: File): Promise<boolean> {
+    const preset = await apiSend<{ ok: boolean; key: string; uploadUrl: string }>(
+      '/api/admin/resource-file',
+      'POST',
+      {
+        id: resourceId,
+        fileName: selected.name,
+        contentType: selected.type || 'application/octet-stream',
+        size: selected.size,
+      }
+    );
+
+    if (!preset.ok || !preset.data?.uploadUrl) {
+      setError('No se pudo preparar la subida del archivo.');
+      return false;
+    }
+
+    // PUT directo a storage: sin cabecera Authorization (la firma va en la URL).
+    const put = await fetch(preset.data.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': selected.type || 'application/octet-stream' },
+      body: selected,
+    });
+    if (!put.ok) {
+      setError('La subida al almacenamiento falló.');
+      return false;
+    }
+
+    const linked = await apiSend('/api/admin/resources', 'PATCH', {
+      id: resourceId,
+      file_key: preset.data.key,
+      file_name: selected.name,
+      file_size: selected.size,
+    });
+    if (!linked.ok) {
+      setError('El archivo subió pero no se pudo vincular al recurso.');
+      return false;
+    }
+    return true;
   }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -84,15 +139,26 @@ export default function ResourcesPanel() {
     };
 
     const res = editingId
-      ? await apiSend('/api/admin/resources', 'PATCH', { id: editingId, ...payload })
-      : await apiSend('/api/admin/resources', 'POST', payload);
+      ? await apiSend<{ resource: AdminResource }>('/api/admin/resources', 'PATCH', { id: editingId, ...payload })
+      : await apiSend<{ resource: AdminResource }>('/api/admin/resources', 'POST', payload);
 
-    setSaving(false);
-
-    if (!res.ok) {
+    if (!res.ok || !res.data?.resource) {
+      setSaving(false);
       setError('No se pudo guardar el recurso.');
       return;
     }
+
+    const savedId = res.data.resource.id;
+    if (file) {
+      const uploaded = await uploadFile(savedId, file);
+      if (!uploaded) {
+        setSaving(false);
+        await load();
+        return;
+      }
+    }
+
+    setSaving(false);
     setNotice(editingId ? 'Recurso actualizado.' : 'Recurso creado.');
     resetForm();
     await load();
@@ -107,6 +173,18 @@ export default function ResourcesPanel() {
     setBusyId(null);
     if (!res.ok) {
       setError('No se pudo cambiar la publicación.');
+      return;
+    }
+    await load();
+  }
+
+  async function removeFile(resource: AdminResource) {
+    if (!window.confirm(`¿Quitar el adjunto de "${resource.title}"?`)) return;
+    setBusyId(resource.id);
+    const res = await apiSend(`/api/admin/resource-file?id=${resource.id}`, 'DELETE');
+    setBusyId(null);
+    if (!res.ok) {
+      setError('No se pudo quitar el archivo.');
       return;
     }
     await load();
@@ -167,6 +245,15 @@ export default function ResourcesPanel() {
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           aria-label="Descripción"
         />
+        <label className={styles.fileField}>
+          <span className={styles.fileLabel}>Adjunto privado (opcional, máx. 25 MB)</span>
+          <input
+            type="file"
+            className={styles.fileInput}
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.zip,.png,.jpg,.jpeg"
+          />
+        </label>
         <div className={styles.formActions}>
           <button type="submit" className={styles.primaryBtn} disabled={saving}>
             {saving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Añadir recurso'}
@@ -189,6 +276,7 @@ export default function ResourcesPanel() {
               <th>Recurso</th>
               <th>Categoría</th>
               <th>Orden</th>
+              <th>Adjunto</th>
               <th>Estado</th>
               <th aria-label="Acciones" />
             </tr>
@@ -196,7 +284,7 @@ export default function ResourcesPanel() {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={5} className={styles.muted}>
+                <td colSpan={6} className={styles.muted}>
                   Cargando catálogo…
                 </td>
               </tr>
@@ -209,6 +297,16 @@ export default function ResourcesPanel() {
                 </td>
                 <td>{resource.category}</td>
                 <td>{resource.sort_order}</td>
+                <td>
+                  {resource.file_name ? (
+                    <>
+                      <span className={styles.cellSub}>{resource.file_name}</span>
+                      <span className={styles.cellSub}>{formatSize(resource.file_size)}</span>
+                    </>
+                  ) : (
+                    <span className={styles.muted}>—</span>
+                  )}
+                </td>
                 <td>
                   <span className={resource.is_active ? styles.badge : styles.badgeNeutral + ' ' + styles.badge}>
                     {resource.is_active ? 'Publicado' : 'Oculto'}
@@ -227,6 +325,16 @@ export default function ResourcesPanel() {
                     >
                       {resource.is_active ? 'Ocultar' : 'Publicar'}
                     </button>
+                    {resource.file_name && (
+                      <button
+                        type="button"
+                        className={styles.miniBtn}
+                        disabled={busyId === resource.id}
+                        onClick={() => removeFile(resource)}
+                      >
+                        Quitar adjunto
+                      </button>
+                    )}
                     <button
                       type="button"
                       className={`${styles.miniBtn} ${styles.miniBtnDanger}`}
@@ -241,7 +349,7 @@ export default function ResourcesPanel() {
             ))}
             {!loading && resources.length === 0 && (
               <tr>
-                <td colSpan={5} className={styles.muted}>
+                <td colSpan={6} className={styles.muted}>
                   El catálogo está vacío.
                 </td>
               </tr>

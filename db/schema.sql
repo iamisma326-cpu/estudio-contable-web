@@ -41,6 +41,12 @@ CREATE TABLE IF NOT EXISTS public.resources (
 CREATE INDEX IF NOT EXISTS resources_active_idx
   ON public.resources (is_active, sort_order, title);
 
+-- Adjuntos privados en Object Storage (bucket `assets`). Se guarda la clave
+-- del objeto, no la URL: las URLs se firman al momento de descargar.
+ALTER TABLE public.resources ADD COLUMN IF NOT EXISTS file_key  text;
+ALTER TABLE public.resources ADD COLUMN IF NOT EXISTS file_name text;
+ALTER TABLE public.resources ADD COLUMN IF NOT EXISTS file_size bigint;
+
 -- ------------------------------------------------------------
 -- Aperturas de recursos: alimenta las métricas del panel.
 -- ------------------------------------------------------------

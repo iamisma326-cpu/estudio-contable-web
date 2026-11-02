@@ -500,6 +500,24 @@
   flex-wrap: wrap;
 }
 
+.fileField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fileLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.fileInput {
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  color: var(--color-text);
+}
+
 .primaryBtn {
   height: 38px;
   padding: 0 16px;

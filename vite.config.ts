@@ -13,6 +13,8 @@ import resources from './api/resources';
 import adminStats from './api/admin/stats';
 import adminUsers from './api/admin/users';
 import adminResources from './api/admin/resources';
+import adminResourceFile from './api/admin/resource-file';
+import resourceDownload from './api/resource-download';
 import pdfEdit from './api/pdf-edit';
 import pdfRender from './api/pdf-render';
 
@@ -36,7 +38,9 @@ export default defineConfig(({ mode }) => {
       k.startsWith('GROQ_') ||
       k.startsWith('ADMIN_') ||
       k.startsWith('DATABASE_URL') ||
-      k.startsWith('NEON_')
+      k.startsWith('NEON_') ||
+      // Object Storage de Neon (S3 compatible)
+      k.startsWith('AWS_')
     ) {
       process.env[k] = v;
     }
@@ -103,6 +107,8 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use('/api/admin/stats', bridge(adminStats));
           server.middlewares.use('/api/admin/users', bridge(adminUsers));
           server.middlewares.use('/api/admin/resources', bridge(adminResources));
+          server.middlewares.use('/api/admin/resource-file', bridge(adminResourceFile));
+          server.middlewares.use('/api/resource-download', bridge(resourceDownload));
           server.middlewares.use('/api/pdf-edit', bridge(pdfEdit));
           server.middlewares.use('/api/pdf-render', bridge(pdfRender));
         },
