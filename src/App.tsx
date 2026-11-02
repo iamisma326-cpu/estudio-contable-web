@@ -11,7 +11,7 @@ import { ScrollTrigger } from './lib/gsap';
 const Home = lazy(() => import('./pages/Home'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ServicesPage = lazy(() => import('./pages/ServicesPage'));
-const ResourcesPage = lazy(() => import('./pages/ResourcesPage'));
+const PanelPage = lazy(() => import('./pages/PanelPage'));
 const RentaPage = lazy(() => import('./pages/RentaPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -66,16 +66,19 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/nosotros" element={<AboutPage />} />
               <Route path="/servicios" element={<ServicesPage />} />
-              {/* /recursos y /admin son áreas privadas: el guard exige sesión
-                  válida (y rol admin en el panel). */}
+              {/* /panel es el área privada del cliente y /admin la de
+                  administración: el guard exige sesión válida (y rol admin
+                  en el panel). /recursos fue el área antigua: se conserva la
+                  ruta para que los enlaces y marcadores sigan funcionando. */}
               <Route
-                path="/recursos"
+                path="/panel"
                 element={
                   <RouteGuard>
-                    <ResourcesPage />
+                    <PanelPage />
                   </RouteGuard>
                 }
               />
+              <Route path="/recursos" element={<Navigate to="/panel" replace />} />
               <Route path="/renta-anual-2025" element={<RentaPage />} />
               <Route path="/contacto" element={<ContactPage />} />
               <Route path="/login" element={<LoginPage />} />
@@ -110,6 +113,7 @@ const INTERNAL_ROUTES = new Set([
   '/recuperar',
   '/restablecer',
   '/admin',
+  '/panel',
 ]);
 
 function ChromeChrome() {

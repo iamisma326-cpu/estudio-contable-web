@@ -55,8 +55,8 @@ export default function AdminPage() {
             <span className={styles.role}>Administración</span>
           </span>
           <div className={styles.actions}>
-            <Link to="/recursos" className={styles.backLink}>
-              Ver área de recursos
+            <Link to="/panel" className={styles.backLink}>
+              Ver mi panel
             </Link>
             <Link to="/" className={styles.backLink}>
               ← Volver al sitio

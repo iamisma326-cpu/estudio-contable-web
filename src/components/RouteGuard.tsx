@@ -3,7 +3,7 @@
  *
  * - Sin sesión → /login (guardando a dónde iba el usuario).
  * - Sesión suspendida → pantalla de aviso, sin datos.
- * - adminOnly y rol != admin → /recursos.
+ * - adminOnly y rol != admin → /panel.
  *
  * El guard del cliente es UX, no seguridad: cada endpoint de /api valida el
  * JWT y el rol por su cuenta.
@@ -62,7 +62,7 @@ export default function RouteGuard({
   }
 
   if (adminOnly && !isAdmin) {
-    return <Navigate to="/recursos" replace />;
+    return <Navigate to="/panel" replace />;
   }
 
   return <>{children}</>;

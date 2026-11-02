@@ -1,7 +1,7 @@
 /**
  * Catálogo de recursos del área privada: alta, edición, publicación, adjunto
  * privado y baja. Lo que se publica aquí es exactamente lo que ve el cliente
- * en /recursos.
+ * en el panel del cliente (/panel, pestaña Biblioteca).
  *
  * Los adjuntos van a Object Storage (bucket privado): se sube con un PUT
  * prefirmado y la descarga se firma al momento, nunca por URL pública.
@@ -224,7 +224,7 @@ export default function ResourcesPanel() {
           />
           <input
             className={styles.input}
-            placeholder="Enlace (/recursos#multas o URL)"
+            placeholder="Enlace (/panel?tab=herramientas o URL)"
             value={form.href}
             onChange={(e) => setForm((f) => ({ ...f, href: e.target.value }))}
             aria-label="Enlace"

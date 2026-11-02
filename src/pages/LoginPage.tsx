@@ -7,7 +7,7 @@
  * email).
  *
  * Tras el login se consulta /api/auth/me para conocer el rol de aplicación y
- * decidir el destino: /admin para administración, /recursos para clientes.
+ * decidir el destino: /admin para administración, /panel para clientes.
  */
 
 import { useEffect, useState } from 'react';
@@ -51,7 +51,7 @@ export default function LoginPage() {
       if (cancelled || !session?.data?.user) return;
       const me = await apiGet<{ user: { role: string } }>('/api/auth/me');
       if (cancelled) return;
-      if (me.ok) navigate(me.data?.user.role === 'admin' ? '/admin' : '/recursos', { replace: true });
+      if (me.ok) navigate(me.data?.user.role === 'admin' ? '/admin' : '/panel', { replace: true });
     })();
     return () => {
       cancelled = true;
@@ -88,7 +88,7 @@ export default function LoginPage() {
         return;
       }
 
-      const destination = from && !(isAdmin && from === '/recursos') ? from : isAdmin ? '/admin' : '/recursos';
+      const destination = from && !(isAdmin && from === '/panel') ? from : isAdmin ? '/admin' : '/panel';
       navigate(destination, { replace: true });
     } catch (err) {
       // El 401 de sign-in llega por excepción: se traduce, no se etiqueta

@@ -112,7 +112,7 @@ function deadlinesReply(digit: number): ChatReply {
         'Con tu cronograma no quedan declaraciones pendientes este año. 🎉\n\n' +
         'Igual conviene revisar que no haya nada presentado fuera de plazo.',
       suggestions: ['Tengo declaraciones atrasadas', 'Quiero un diagnóstico gratuito'],
-      links: [{ label: 'Ver cronograma completo', to: '/recursos' }],
+      links: [{ label: 'Ver cronograma completo', to: '/panel?tab=calendario' }],
     };
   }
 
@@ -135,7 +135,7 @@ function deadlinesReply(digit: number): ChatReply {
       `${lines}\n\n` +
       'Si eres **Buenos Contribuyentes** la fecha es otra: dímelo y la recalculo.',
     suggestions: ['¿Y si soy Buenos Contribuyentes?', 'Tengo declaraciones atrasadas', 'Ver el cronograma'],
-    links: [{ label: 'Ver tabla por dígito', to: '/recursos' }],
+    links: [{ label: 'Ver tabla por dígito', to: '/panel?tab=calendario' }],
   };
 }
 
@@ -152,7 +152,7 @@ function goodTaxpayerReply(): ChatReply {
       `${lines}\n\n` +
       'Son fechas distintas a las del resto de dígitos, así que vale la pena tenerlas a mano.',
     suggestions: ['Tengo declaraciones atrasadas', 'Ver el cronograma'],
-    links: [{ label: 'Ver tabla por dígito', to: '/recursos' }],
+    links: [{ label: 'Ver tabla por dígito', to: '/panel?tab=calendario' }],
   };
 }
 
@@ -574,7 +574,7 @@ const INTENTS: ChatIntent[] = [
         'Los días se mueven un poco según el mes (30 o 31) y en diciembre vencen en enero.\n\n' +
         'Dime el último dígito de tu RUC y te calculo tu próxima fecha exacta.',
       suggestions: ['Mi RUC termina en 5', 'Tengo declaraciones atrasadas', 'Ver el cronograma'],
-      links: [{ label: 'Ver cronograma SUNAT 2026', to: '/recursos' }],
+      links: [{ label: 'Ver cronograma SUNAT 2026', to: '/panel?tab=calendario' }],
     },
   },
   {
@@ -604,7 +604,7 @@ const INTENTS: ChatIntent[] = [
         '• **Régimen General** — 29.5 % sobre la renta neta, sin límite de ingresos.\n\n' +
         'La elección depende de tus ingresos, compras, clientes y utilidad esperada: en el diagnóstico comparamos escenarios con tus números reales.',
       suggestions: ['Comparar mis regímenes', '¿Cuánto cuesta?', '¿Qué revisan en el diagnóstico?'],
-      links: [{ label: 'Calculadora de regímenes', to: '/recursos' }],
+      links: [{ label: 'Calculadora de regímenes', to: '/panel?tab=herramientas' }],
     },
   },
   {
@@ -775,7 +775,7 @@ const INTENTS: ChatIntent[] = [
         '• **Glosario contable** en lenguaje sencillo y actualidad tributaria.\n\n' +
         '¿Te llevo directo?',
       suggestions: ['Comparar mis regímenes', '¿Cuándo vence mi declaración?'],
-      links: [{ label: 'Ir a Recursos', to: '/recursos' }],
+      links: [{ label: 'Ir a Recursos', to: '/panel' }],
     },
   },
   {
@@ -786,7 +786,7 @@ const INTENTS: ChatIntent[] = [
         'El **tipo de cambio SUNAT** de referencia (compra y venta) se publica todos los días hábiles y es el que debes usar para facturar y regularizar en moneda extranjera.\n\n' +
         'Lo tienes actualizado en Recursos, junto con la calculadora de regímenes.',
       suggestions: ['Comparar mis regímenes', '¿Qué servicios tienen?'],
-      links: [{ label: 'Ver tipo de cambio', to: '/recursos' }],
+      links: [{ label: 'Ver tipo de cambio', to: '/panel?tab=herramientas' }],
     },
   },
   {

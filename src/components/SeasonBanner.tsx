@@ -83,7 +83,7 @@ export default function SeasonBanner() {
         mensuales según el último dígito de tu RUC. Revisa tu fecha exacta en el
         cronograma.
       </p>
-      <Link to="/recursos" className={styles.link}>
+      <Link to="/panel?tab=calendario" className={styles.link}>
         Ver mi fecha
       </Link>
     </aside>

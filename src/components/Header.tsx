@@ -11,7 +11,7 @@ const navItems = [
   { label: 'Inicio', link: '/' },
   { label: 'Nosotros', link: '/nosotros' },
   { label: 'Servicios', link: '/servicios' },
-  { label: 'Recursos', link: '/recursos' },
+  { label: 'Mi panel', link: '/panel' },
   { label: 'Acceso', link: '/login' },
 ];
 

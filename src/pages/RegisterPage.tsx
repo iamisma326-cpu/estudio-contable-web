@@ -5,7 +5,7 @@
  *    contraseña, nombre). El mínimo del proveedor es 8 caracteres.
  * 2. `/api/auth/profile` guarda los datos de negocio (empresa, RUC, teléfono)
  *    que Better Auth no cubre.
- * 3. La sesión ya queda abierta, así que se entra directo a /recursos.
+ * 3. La sesión ya queda abierta, así que se entra directo al panel del cliente.
  */
 
 import { useState } from 'react';
@@ -79,7 +79,7 @@ export default function RegisterPage() {
         ruc: ruc.replace(/\D/g, ''),
       });
 
-      navigate('/recursos', { replace: true });
+      navigate('/panel', { replace: true });
     } catch (err) {
       setError(
         authErrorMessage(err) ??
