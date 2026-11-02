@@ -13,7 +13,7 @@
  *   { replaces: [{ page: number, find: string, replace: string, cover?: boolean }]
  *     notes: string }            // cover=true: tacha con rect blanco antes
  *
- * Autenticación: requiere cookie admin válida (mismo patrón que /api/admin/*).
+ * Autenticación: JWT de Neon Auth con role = admin (ver api/_auth/guard.ts).
  *
  * Límites:
  *   - pdfBase64 hasta ~3 MB de PDF (base64 ~4 MB): Vercel rechaza
@@ -22,8 +22,9 @@
  *   - respuesta cacheable no (cada request es único).
  */
 
-import type { ReqLike, ResLike } from './_admin/auth.js';
-import { verifyCookie, readJsonBody } from './_admin/auth.js';
+import type { ReqLike, ResLike } from './_auth/http.js';
+import { readJsonBody } from './_auth/http.js';
+import { requireAdmin } from './_auth/guard.js';
 import { extractPdfTextPerPage, extractPdfTextDetailed, extractFormFields } from './_pdf/text.js';
 import { PDFDocument } from 'pdf-lib';
 
@@ -292,10 +293,8 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     res.status(405).json({ ok: false, error: 'method_not_allowed' });
     return;
   }
-  if (!verifyCookie(req.headers)) {
-    res.status(401).json({ ok: false, error: 'not_authenticated' });
-    return;
-  }
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
 
   const body = (await readJsonBody(req)) as EditRequest | null;
   const pdfBase64 = typeof body?.pdfBase64 === 'string' ? body.pdfBase64 : '';

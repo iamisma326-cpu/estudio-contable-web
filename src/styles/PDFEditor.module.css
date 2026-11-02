@@ -351,6 +351,33 @@
   font-size: 0.86rem;
 }
 
+.warningBox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: rgba(196, 132, 32, 0.1);
+  border: 1px solid rgba(196, 132, 32, 0.32);
+  border-radius: 8px;
+  color: #8a5a10;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.noticeBox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: rgba(46, 122, 87, 0.1);
+  border: 1px solid rgba(46, 122, 87, 0.28);
+  border-radius: 8px;
+  color: #1f6b4a;
+  font-size: 0.86rem;
+}
+
 .notes {
   margin: 0 0 12px;
   padding: 8px 12px;
@@ -358,8 +385,7 @@
   border: 1px solid rgba(46, 84, 134, 0.18);
   border-radius: 8px;
   color: var(--color-primary-light);
-  font-size: 0.86rem;
-}
+  font-size: 0.86rem;}
 
 .empty {
   margin: 0;

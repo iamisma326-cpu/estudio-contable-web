@@ -5,7 +5,13 @@
  * Capa principal: pdfjs-dist (legacy build para Node), que entiende CMaps,
  * ToUnicode, fuentes subset y da coordenadas reales por run de texto.
  * Fallback: parser propio de operadores de texto (BT/ET, Tf, Tm, Td, T*,
- * Tj, ', TJ) sobre los content streams descomprimidos con pdf-lib.
+ * TJ, ') sobre los content streams descomprimidos con pdf-lib.
+ *
+ * La localización del texto es TOLERANTE a propósito: el "find" lo escribe el
+ * LLM (o el usuario) leyendo una extracción que no es literal, así que
+ * "DNI N.º 09404027" tiene que encontrar "DNI N.°: 09404027". Antes la
+ * coincidencia era literal y, cuando fallaba, la edición se descartaba sin
+ * avisar: el PDF salía idéntico al original.
  *
  * Este archivo vive bajo api/_pdf/ — el prefijo "_" evita que Vercel lo
  * publique como endpoint.
@@ -493,61 +499,352 @@ async function getRunsViaPdfjs(
   }
 }
 
+/* ===== Comparación de texto tolerante ===== */
+
 /**
- * Localiza needle dentro de la lista de runs (para el fallback con parser
- * manual y también como helper interno). Convierte runs → rect.
+ * Equivalencias de caracteres entre lo que extrae pdfjs y lo que escribe el
+ * LLM (o el usuario). Los PDFs de origen一变ian: "N.º" vs "N.°", espacio
+ * duro, comillas tipográficas, guiones. Sin esta tabla un "find" correcto
+ * semánticamente no aparece literal en la página, la búsqueda falla, y la
+ * edición se descarta EN SILENCIO (el PDF sale idéntico).
  */
-function findRectInRuns(
-  runs: LocatedRun[],
+const CHAR_EQUIV: Record<string, string> = {
+  '\u00a0': ' ', '\u2007': ' ', '\u202f': ' ', '\u2009': ' ', '\u200a': ' ',
+  '\u00ba': '\u00b0', // º → °
+  '\u2018': "'", '\u2019': "'", '\u201a': "'", '\u201b': "'",
+  '\u201c': '"', '\u201d': '"', '\u201e': '"', '\u201f': '"',
+  '\u2010': '-', '\u2011': '-', '\u2012': '-', '\u2013': '-', '\u2014': '-', '\u2015': '-',
+  '\u2212': '-',
+};
+
+interface Normalized {
+  text: string;
+  /** map[i] = índice en el texto ORIGINAL del carácter normalizado i. */
+  map: number[];
+}
+
+/**
+ * Normaliza para comparar.
+ *   nivel 1: equivalencias + espacios colapsados + minúsculas (respeta
+ *            puntuación). Es el que debe resolver el 99% de los casos.
+ *   nivel 2: además convierte cualquier secuencia de puntuación en un
+ *            separador, para cuando el "find" difiere en ':' o ','.
+ *   nivel 3: además descarta los tokens de una sola letra. Es el caso
+ *            "DNI N.º" vs "DNI N.°" vs "DNI N.o": el ordinal, el grado y la
+ *            letra se usan indistintamente en los PDFs de origen. Los
+ *            dígitos/datos que siguen ("09404027") siguen siendo el ancla
+ *            exacta de la coincidencia.
+ */
+function normalizeForMatch(s: string, level: 1 | 2 | 3): Normalized {
+  const chars: string[] = [];
+  const map: number[] = [];
+  let prevSpace = true; // evita un espacio inicial
+  for (let i = 0; i < s.length; i++) {
+    let ch = CHAR_EQUIV[s[i]] ?? s[i];
+    ch = ch.toLowerCase();
+    for (let k = 0; k < ch.length; k++) {
+      const c = ch[k];
+      if (level >= 2 && !/[0-9a-z]/.test(c)) {
+        if (!prevSpace) {
+          chars.push(' ');
+          map.push(i);
+          prevSpace = true;
+        }
+        continue;
+      }
+      if (c === ' ') {
+        if (prevSpace) continue;
+        prevSpace = true;
+      } else {
+        prevSpace = false;
+      }
+      chars.push(c);
+      map.push(i);
+    }
+  }
+  if (level < 3) return { text: chars.join(''), map };
+
+  // Nivel 3: elimina tokens de una sola letra (no dígitos).
+  const outChars: string[] = [];
+  const outMap: number[] = [];
+  let tokenStart = 0;
+  const flush = (end: number): void => {
+    const token = chars.slice(tokenStart, end).join('');
+    const isSingleLetter = token.length === 1 && /[a-z]/.test(token);
+    if (isSingleLetter) return;
+    for (let i = tokenStart; i < end; i++) {
+      outChars.push(chars[i]);
+      outMap.push(map[i]);
+    }
+  };
+  for (let i = 0; i < chars.length; i++) {
+    if (chars[i] === ' ') {
+      flush(i);
+      if (outChars.length && outChars[outChars.length - 1] !== ' ') {
+        outChars.push(' ');
+        outMap.push(map[i]);
+      }
+      tokenStart = i + 1;
+    }
+  }
+  flush(chars.length);
+  return { text: outChars.join(''), map: outMap };
+}
+
+interface MatchRange {
+  /** Índices en el texto ORIGINAL. */
+  start: number;
+  end: number;
+  /** Nivel de normalización con el que se encontró (1 = literal). */
+  level: 1 | 2 | 3;
+}
+
+/**
+ * Busca `needle` dentro de `hay` tolerando diferencias de espacios,
+ * mayúsculas, puntuación y de los signos de ordinal/grado. Devuelve el
+ * rango original del texto original o null.
+ */
+function findNormalizedRange(hay: string, needle: string): MatchRange | null {
+  if (!needle) return null;
+  for (const level of [1, 2, 3] as const) {
+    const n = normalizeForMatch(needle, level);
+    if (!n.text) continue;
+    const h = normalizeForMatch(hay, level);
+    const at = h.text.indexOf(n.text);
+    if (at >= 0) {
+      const start = h.map[at];
+      const end = h.map[at + n.text.length - 1] + 1;
+      return { start, end: Math.max(end, start + 1), level };
+    }
+  }
+  return null;
+}
+
+/** ¿Dos cadenas son iguales ignorando mayúsculas, espacios y equivalencias? */
+function equalsLevel1(a: string, b: string): boolean {
+  if (!a.length || a.length !== b.length) return false;
+  return normalizeForMatch(a, 1).text === normalizeForMatch(b, 1).text;
+}
+
+/**
+ * Cuando la coincidencia fue APROXIMADA, el rango encontrado suele ser más
+ * largo que lo que el usuario quiso cambiar: pedir "DNI N.º 09404027" sobre
+ * una línea "DNI N.°: 09404027" puede coverings toda la línea y borrar la
+ * etiqueta. Se reduce el rango a la parte del needle que sí aparece literal
+ * (típicamente el valor: "09404027"), dejando la etiqueta intacta.
+ */
+function narrowFuzzyRange(
+  hay: string,
   needle: string,
-  measure: { widthOfTextAtSize: (s: string, n: number) => number }
-): { x: number; y: number; width: number; height: number } | null {
-  // Agrupar en líneas por baseline (±2pt), concatenando con espacio.
-  interface Line { text: string; runs: LocatedRun[]; y: number }
-  const lines: Line[] = [];
-  const sorted = [...runs].sort((a, b) => a.baselineY - b.baselineY);
+  range: MatchRange
+): MatchRange {
+  if (range.level === 1) return range;
+  const span = range.end - range.start;
+  for (let k = Math.min(needle.length, span); k >= 1; k--) {
+    if (equalsLevel1(hay.slice(range.end - k, range.end), needle.slice(needle.length - k))) {
+      return { start: range.end - k, end: range.end, level: range.level };
+    }
+    if (equalsLevel1(hay.slice(range.start, range.start + k), needle.slice(0, k))) {
+      return { start: range.start, end: range.start + k, level: range.level };
+    }
+  }
+  return range;
+}
+
+/* ===== Geometría: runs → líneas → rects ===== */
+
+interface TextLine {
+  /** Texto de la línea tal como lo ve el lector (sin espacios inventados). */
+  text: string;
+  runs: LocatedRun[];
+  /** Por cada carácter del texto: índice del run y offset dentro del run. */
+  owner: number[];
+  off: number[];
+  y: number;
+}
+
+interface TextRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Tamaño real de la fuente en el texto located (no 11 por defecto). */
+  size: number;
+}
+
+/**
+ * Agrupa los runs en líneas por baseline (±2pt). El separador entre runs se
+ * decide por la distancia horizontal real: si hay hueco real se mete un
+ * espacio, si no se concatena directo. Esto evita el "espacio fantasma" que
+ * antes hacía que un "find" como "09404027" no apareciera en una línea cuyo
+ * texto era "DNI N.o:09404027".
+ */
+function buildLines(runs: LocatedRun[]): TextLine[] {
+  const lines: TextLine[] = [];
+  const sorted = [...runs].sort((a, b) =>
+    Math.abs(a.baselineY - b.baselineY) < 2 ? a.x - b.x : a.baselineY - b.baselineY,
+  );
   for (const r of sorted) {
     const last = lines[lines.length - 1];
     if (last && Math.abs(last.y - r.baselineY) < 2) {
-      last.text += (last.text && !last.text.endsWith(' ') ? ' ' : '') + r.str;
+      const prev = last.runs[last.runs.length - 1];
+      const gap = r.x - (prev.x + prev.width);
+      const size = prev.size || 11;
+      const sep = gap > Math.max(1, size * 0.22) ? ' ' : '';
+      if (sep) {
+        last.text += sep;
+        last.owner.push(last.runs.length - 1);
+        last.off.push(prev.str.length);
+      }
+      const runIdx = last.runs.length;
+      for (let i = 0; i < r.str.length; i++) {
+        last.text += r.str[i];
+        last.owner.push(runIdx);
+        last.off.push(i);
+      }
       last.runs.push(r);
     } else {
-      lines.push({ text: r.str, runs: [r], y: r.baselineY });
+      const line: TextLine = { text: '', runs: [], owner: [], off: [], y: r.baselineY };
+      const runIdx = 0;
+      for (let i = 0; i < r.str.length; i++) {
+        line.text += r.str[i];
+        line.owner.push(runIdx);
+        line.off.push(i);
+      }
+      line.runs.push(r);
+      lines.push(line);
     }
   }
-  const target = lines.find((l) => l.text.includes(needle));
-  if (!target) return null;
+  return lines;
+}
 
-  const start = target.text.indexOf(needle);
-  const end = start + needle.length;
-  let acc = 0;
-  let xStart: number | null = null;
-  let xEnd: number | null = null;
-  let baselineY = target.y;
-  let size = target.runs[0]?.size || 11;
-  for (const r of target.runs) {
-    const itemStart = acc;
-    const itemEnd = acc + r.str.length;
-    if (itemEnd > start && itemStart < end) {
-      const overlapStart = Math.max(itemStart, start) - itemStart;
-      const overlapEnd = Math.min(itemEnd, end) - itemStart;
-      const pxStart = r.x + measure.widthOfTextAtSize(r.str.slice(0, overlapStart), r.size || size);
-      const pxEnd = r.x + measure.widthOfTextAtSize(r.str.slice(0, overlapEnd), r.size || size);
-      if (xStart === null) xStart = pxStart;
-      xEnd = pxEnd;
-      baselineY = r.baselineY;
-      size = r.size || size;
+/**
+ * Avance horizontal dentro de un run.
+ * Si la fuente del run ES la de `measure` (Helvetica), las métricas son
+ * exactas. Si no, se reparte el ancho real del run de forma proporcional,
+ * que es mucho mejor que medir con Helvetica un texto en otra tipografía
+ * (el error crece con el prefijo: "DNI N.º: " mide 4 pt más
+ * corto de lo que es y el texto nuevo se dibujaba encima del viejo).
+ */
+function offsetWithinRun(
+  r: LocatedRun,
+  off: number,
+  measure: { widthOfTextAtSize: (s: string, n: number) => number },
+  isMeasureFont: boolean
+): number {
+  if (isMeasureFont) return measure.widthOfTextAtSize(r.str.slice(0, off), r.size || 11);
+  const len = r.str.length || 1;
+  return (r.width * off) / len;
+}
+
+/** ¿El run usa la misma tipografía que la de `measure` (Helvetica)? */
+function runUsesMeasureFont(
+  r: LocatedRun,
+  measure: { widthOfTextAtSize: (s: string, n: number) => number }
+): boolean {
+  if (!r.str.length) return true;
+  const expected = measure.widthOfTextAtSize(r.str, r.size || 11);
+  if (!expected) return false;
+  return Math.abs(expected - r.width) <= Math.max(0.75, r.width * 0.03);
+}
+
+/**
+ * Localiza TODAS las apariciones del needle en la lista de runs y devuelve un
+ * rect por aparición (con el tamaño real de fuente). El orden es de abajo
+ * hacia arriba: en un formulario, el campo de datos suele estar más abajo
+ * que el texto que lo menciona en un párrafo.
+ */
+function findRectsInRuns(
+  runs: LocatedRun[],
+  needle: string,
+  measure: { widthOfTextAtSize: (s: string, n: number) => number }
+): TextRect[] {
+  const lines = buildLines(runs);
+  const out: TextRect[] = [];
+  for (const line of lines) {
+    // Puede haber varias apariciones en la misma línea: se recorren todas.
+    let from = 0;
+    for (;;) {
+      const range = findNormalizedRange(line.text.slice(from), needle);
+      if (!range) break;
+      const narrowed = narrowFuzzyRange(
+        line.text.slice(from),
+        needle,
+        { start: range.start, end: range.end, level: range.level }
+      );
+      const start = from + narrowed.start;
+      const end = from + narrowed.end;
+      const rect = rectForRange(line, start, end, measure);
+      if (rect) out.push(rect);
+      from = Math.max(end, start + 1);
+      if (from >= line.text.length) break;
     }
-    acc += r.str.length + 1;
-    if (acc >= end) break;
   }
-  if (xStart === null || xEnd === null) return null;
+  return out;
+}
+
+/** Rectángulo que cubre line.text[start..end) con coordenadas PDF. */
+function rectForRange(
+  line: TextLine,
+  start: number,
+  end: number,
+  measure: { widthOfTextAtSize: (s: string, n: number) => number }
+): TextRect | null {
+  if (start < 0 || end > line.text.length || start >= end) return null;
+  const firstRun = line.runs[line.owner[start]];
+  const lastRun = line.runs[line.owner[end - 1]];
+  if (!firstRun || !lastRun) return null;
+
+  const xStart =
+    firstRun.x +
+    offsetWithinRun(firstRun, line.off[start], measure, runUsesMeasureFont(firstRun, measure));
+  const xEnd =
+    lastRun.x +
+    offsetWithinRun(lastRun, line.off[end - 1] + 1, measure, runUsesMeasureFont(lastRun, measure));
+  if (!Number.isFinite(xStart) || !Number.isFinite(xEnd)) return null;
+
+  const size = firstRun.size || 11;
   return {
     x: xStart - 1,
-    y: baselineY - 2,
-    width: Math.max(xEnd - xStart + 2, measure.widthOfTextAtSize(needle, size) + 4),
+    y: line.y - 2,
+    width: Math.max(xEnd - xStart + 2, 2),
     height: size + 3,
+    size,
   };
+}
+
+/**
+ * Busca el needle en la página y devuelve TODOS los rects que lo cubren.
+ * Capa pdfjs primero, parser manual de fallback.
+ *
+ * Devolver todas las apariciones (y no sólo la primera) es lo que hace útil
+ * la herramienta: un DNI/RUC aparece en el párrafo de identidad y en el
+ * campo del formulario; el usuario espera que cambien los dos.
+ */
+export async function findAllTextCoords(
+  pdfBuffer: Buffer,
+  pageIndex0: number,
+  needle: string,
+  measure: { widthOfTextAtSize: (s: string, n: number) => number }
+): Promise<TextRect[]> {
+  const runs = await getRunsViaPdfjs(pdfBuffer, pageIndex0);
+  if (runs && runs.length) {
+    return findRectsInRuns(runs, needle, measure);
+  }
+  // Fallback manual: el extractor propio sobre el page-node de pdf-lib.
+  try {
+    const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+    if (pageIndex0 < 0 || pageIndex0 >= pdfDoc.getPageCount()) return [];
+    const page = pdfDoc.getPage(pageIndex0);
+    if (page.getRotation().angle !== 0) return [];
+    const items: TextItem[] = extractTextItems(page, measure);
+    const runsManual: LocatedRun[] = items.map((it) => ({
+      str: it.str, x: it.x, baselineY: it.y, width: measure.widthOfTextAtSize(it.str, it.size || 11), size: it.size || 11,
+    }));
+    return findRectsInRuns(runsManual, needle, measure);
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -559,26 +856,12 @@ export async function findTextCoords(
   pageIndex0: number,
   needle: string,
   measure: { widthOfTextAtSize: (s: string, n: number) => number }
-): Promise<{ x: number; y: number; width: number; height: number } | null> {
-  const runs = await getRunsViaPdfjs(pdfBuffer, pageIndex0);
-  if (runs && runs.length) {
-    return findRectInRuns(runs, needle, measure);
-  }
-  // Fallback manual: el extractor propio sobre el page-node de pdf-lib.
-  try {
-    const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
-    if (pageIndex0 < 0 || pageIndex0 >= pdfDoc.getPageCount()) return null;
-    const page = pdfDoc.getPage(pageIndex0);
-    if (page.getRotation().angle !== 0) return null;
-    const items: TextItem[] = extractTextItems(page, measure);
-    const runsManual: LocatedRun[] = items.map((it) => ({
-      str: it.str, x: it.x, baselineY: it.y, width: measure.widthOfTextAtSize(it.str, it.size || 11), size: it.size || 11,
-    }));
-    return findRectInRuns(runsManual, needle, measure);
-  } catch {
-    return null;
-  }
-}/**
+): Promise<TextRect | null> {
+  const rects = await findAllTextCoords(pdfBuffer, pageIndex0, needle, measure);
+  return rects.length ? rects[0] : null;
+}
+
+/**
  * Posición para ESCRIBIR texto nuevo anclado al final de una etiqueta.
  * Capa pdfjs primero, parser manual de fallback. offsetX/offsetY permiten
  * ajustar fino (líneas de subrayado, etc.).
@@ -592,13 +875,13 @@ export async function findAnchorCoords(
 ): Promise<{ x: number; y: number; size: number } | null> {
   const runs = await getRunsViaPdfjs(pdfBuffer, pageIndex0);
   if (runs && runs.length) {
-    const anchorRect = findRectInRuns(runs, anchor, measure);
+    const anchorRect = findRectsInRuns(runs, anchor, measure)[0];
     if (anchorRect) {
       const gap = 6;
       return {
         x: anchorRect.x + anchorRect.width + gap + (opts?.offsetX ?? 0),
         y: anchorRect.y + 2 + (opts?.offsetY ?? 0),
-        size: Math.max(anchorRect.height - 3, 8),
+        size: Math.max(anchorRect.size, 8),
       };
     }
     return null;
@@ -614,13 +897,13 @@ export async function findAnchorCoords(
     const runsManual: LocatedRun[] = items.map((it) => ({
       str: it.str, x: it.x, baselineY: it.y, width: measure.widthOfTextAtSize(it.str, it.size || 11), size: it.size || 11,
     }));
-    const anchorRect = findRectInRuns(runsManual, anchor, measure);
+    const anchorRect = findRectsInRuns(runsManual, anchor, measure)[0];
     if (!anchorRect) return null;
     const gap = 6;
     return {
       x: anchorRect.x + anchorRect.width + gap + (opts?.offsetX ?? 0),
       y: anchorRect.y + 2 + (opts?.offsetY ?? 0),
-      size: Math.max(anchorRect.height - 3, 8),
+      size: Math.max(anchorRect.size, 8),
     };
   } catch {
     return null;

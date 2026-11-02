@@ -12,6 +12,7 @@ const navItems = [
   { label: 'Nosotros', link: '/nosotros' },
   { label: 'Servicios', link: '/servicios' },
   { label: 'Recursos', link: '/recursos' },
+  { label: 'Acceso', link: '/login' },
 ];
 
 export default function Header() {

@@ -4,6 +4,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import ChatBot from './components/ChatBot';
 import ScrollToTop from './components/ScrollToTop';
+import RouteGuard from './components/RouteGuard';
 import { ScrollTrigger } from './lib/gsap';
 
 // Páginas con carga perezosa: cada una es su propio chunk
@@ -14,6 +15,7 @@ const ResourcesPage = lazy(() => import('./pages/ResourcesPage'));
 const RentaPage = lazy(() => import('./pages/RentaPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 
 function PageLoader() {
@@ -62,11 +64,28 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/nosotros" element={<AboutPage />} />
               <Route path="/servicios" element={<ServicesPage />} />
-              <Route path="/recursos" element={<ResourcesPage />} />
+              {/* /recursos y /admin son áreas privadas: el guard exige sesión
+                  válida (y rol admin en el panel). */}
+              <Route
+                path="/recursos"
+                element={
+                  <RouteGuard>
+                    <ResourcesPage />
+                  </RouteGuard>
+                }
+              />
               <Route path="/renta-anual-2025" element={<RentaPage />} />
               <Route path="/contacto" element={<ContactPage />} />
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/admin" element={<AdminPage />} />
+              <Route path="/registro" element={<RegisterPage />} />
+              <Route
+                path="/admin"
+                element={
+                  <RouteGuard adminOnly>
+                    <AdminPage />
+                  </RouteGuard>
+                }
+              />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
@@ -81,15 +100,17 @@ export default function App() {
  * En /login y /admin ocultamos la cabecera y el pie del sitio: la
  * experiencia interna no debe parecerse al marketing público.
  */
+const INTERNAL_ROUTES = new Set(['/login', '/registro', '/admin']);
+
 function ChromeChrome() {
   const { pathname } = useLocation();
-  if (pathname === '/login' || pathname === '/admin') return null;
+  if (INTERNAL_ROUTES.has(pathname)) return null;
   return <Header />;
 }
 
 function ChromeFooter() {
   const { pathname } = useLocation();
-  if (pathname === '/login' || pathname === '/admin') return null;
+  if (INTERNAL_ROUTES.has(pathname)) return null;
   return <Footer />;
 }
 
@@ -100,6 +121,6 @@ function ChromeFooter() {
  */
 function ChatChrome() {
   const { pathname } = useLocation();
-  if (pathname === '/login' || pathname === '/admin') return null;
+  if (INTERNAL_ROUTES.has(pathname)) return null;
   return <ChatBot />;
 }

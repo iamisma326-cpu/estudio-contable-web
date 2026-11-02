@@ -41,7 +41,16 @@ import {
   X,
   PencilLine,
 } from 'lucide-react';
+import { getAuthToken } from '../lib/api';
 import styles from '../styles/PDFEditor.module.css';
+
+/** Cabeceras con el JWT de Neon Auth: /api/pdf-* exige admin autenticado. */
+async function authJsonHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = await getAuthToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
 
 interface ReplaceOp {
   page: number;
@@ -72,6 +81,15 @@ interface EditResponse {
   fields?: FieldOp[];
   notes?: string;
   error?: string;
+}
+
+/** Resultado que devuelve /api/pdf-render por cada operación intentada. */
+interface AppliedOp {
+  page: number;
+  find: string;
+  replace?: string;
+  status: 'ok' | 'not_found';
+  matches?: number;
 }
 
 const DEBOUNCE_MS = 600;
@@ -111,6 +129,8 @@ export default function PDFEditor() {
   const [busy, setBusy] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   // ===== Edición manual (sin IA): buscar → reemplazar directo =====
   const [manualMode, setManualMode] = useState(false);
@@ -122,6 +142,8 @@ export default function PDFEditor() {
 
   const acceptFile = useCallback(async (f: File) => {
     setError(null);
+    setWarning(null);
+    setNotice(null);
     setFileError(null);
     if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') {
       setFileError('El archivo debe ser un PDF.');
@@ -181,8 +203,7 @@ export default function PDFEditor() {
     try {
       const res = await fetch('/api/pdf-edit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: await authJsonHeaders(),
         body: JSON.stringify({ pdfBase64: b64, instruction: instr, pageHint: hint }),
       });
       if (reqId !== latestReqRef.current) return; // respuesta obsoleta
@@ -215,11 +236,11 @@ export default function PDFEditor() {
     if (!pdfBase64 || (replaces.length === 0 && fills.length === 0 && fields.length === 0)) return;
     setRendering(true);
     setError(null);
+    setWarning(null);
     try {
       const res = await fetch('/api/pdf-render', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: await authJsonHeaders(),
         body: JSON.stringify({ pdfBase64, ops: replaces, fills, fields }),
       });
       if (!res.ok) {
@@ -228,11 +249,60 @@ export default function PDFEditor() {
         return;
       }
       const data = await res.json();
-      // /api/pdf-render devuelve JSON { ok, base64 } o error.
+      // /api/pdf-render devuelve JSON { ok, base64, applied } o error.
       if (!data.ok || typeof data.base64 !== 'string') {
         setError(data.error || 'No se pudo generar el PDF.');
         return;
       }
+
+      // El servidor devuelve el estado REAL de cada operación. Antes se
+      // ignoraba: cuando el texto no se encontraba, el PDF salía idéntico
+      // y el usuario descargaba un documento sin cambios sin enterarse de
+      // nada. Ahora lo decimos con nombre y apellidos.
+      const applied: AppliedOp[] = Array.isArray(data.applied) ? data.applied : [];
+      const fillResults: Array<{ anchor?: string; status?: string }> = Array.isArray(data.appliedFills)
+        ? data.appliedFills
+        : [];
+      const fieldResults: Array<{ name?: string; status?: string }> = Array.isArray(data.appliedFields)
+        ? data.appliedFields
+        : [];
+      const failed = applied.filter((a) => a?.status !== 'ok');
+      const fillFailed = fillResults.filter((f) => f?.status !== 'ok');
+      const fieldFailed = fieldResults.filter((f) => f?.status !== 'ok');
+      const totalOps = applied.length + fillResults.length + fieldResults.length;
+      const failedCount = failed.length + fillFailed.length + fieldFailed.length;
+
+      if (failedCount === 0 && totalOps > 0) {
+        const total = applied.reduce((n, a) => n + (a?.matches ?? 1), 0);
+        setNotice(
+          total > 1
+            ? `Se aplicaron ${total} cambios en el PDF.`
+            : 'Se aplicó el cambio en el PDF.',
+        );
+      } else if (totalOps > 0 && failedCount === totalOps) {
+        // Todo falló: el PDF descargado NO tiene el cambio. Esto es un error,
+        // no un aviso.
+        const detalle = [
+          ...failed.map((f) => `"${f.find}" en la página ${f.page}`),
+          ...fillFailed.map((f) => `el espacio "${f.anchor ?? ''}"`),
+          ...fieldFailed.map((f) => `el campo "${f.name ?? ''}"`),
+        ].join(', ');
+        setError(
+          `No se encontró el texto en el PDF, así que el archivo descargado está SIN el cambio (${detalle}). ` +
+            'Revisa el texto a buscar: debe coincidir con el del PDF, sin tildes distintas ni puntos distintos.',
+        );
+      } else if (failedCount > 0) {
+        const detalle = [
+          ...failed.map((f) => `"${f.find}" (pág. ${f.page})`),
+          ...fillFailed.map((f) => `el espacio "${f.anchor ?? ''}"`),
+          ...fieldFailed.map((f) => `el campo "${f.name ?? ''}"`),
+        ].join(', ');
+        setWarning(
+          `Parte de los cambios NO se aplicó porque el texto no existe tal cual en el PDF: ${detalle}. ` +
+            'El PDF descargado sale con los cambios que sí se pudieron ubicar.',
+        );
+      }
+
       // Disparar descarga
       const link = document.createElement('a');
       link.href = `data:application/pdf;base64,${data.base64}`;
@@ -241,6 +311,9 @@ export default function PDFEditor() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      // La vista previa pasa a mostrar el PDF EDITADO: el usuario ve el
+      // resultado sin abrir el archivo descargado.
+      setPdfDataUrl(`data:application/pdf;base64,${data.base64}`);
     } catch {
       setError('Error de red al generar el PDF.');
     } finally {
@@ -265,11 +338,13 @@ export default function PDFEditor() {
     }
     setManualBusy(true);
     setManualMsg(null);
+    setError(null);
+    setWarning(null);
+    setNotice(null);
     try {
       const res = await fetch('/api/pdf-render', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: await authJsonHeaders(),
         body: JSON.stringify({
           pdfBase64,
           ops: [{
@@ -290,8 +365,9 @@ export default function PDFEditor() {
         setManualMsg(data.error || 'No se pudo generar el PDF.');
         return;
       }
-      const applied = (Array.isArray(data.applied) ? data.applied : []) as Array<{ status?: string } | null>;
-      const located = applied.some((a) => a?.status === 'ok');
+      const applied: AppliedOp[] = Array.isArray(data.applied) ? data.applied : [];
+      const located = applied.find((a) => a?.status === 'ok');
+      const matches = located?.matches ?? 0;
       const link = document.createElement('a');
       link.href = `data:application/pdf;base64,${data.base64}`;
       const original = file?.name?.replace(/\.pdf$/i, '') || 'documento';
@@ -299,10 +375,13 @@ export default function PDFEditor() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      setPdfDataUrl(`data:application/pdf;base64,${data.base64}`);
       setManualMsg(
         located
-          ? 'Reemplazo aplicado y PDF descargado.'
-          : 'No se ubicó el texto exacto: el PDF descargado incluye una nota al pie con el cambio.',
+          ? matches > 1
+            ? `Reemplazo aplicado en ${matches} lugares y PDF descargado.`
+            : 'Reemplazo aplicado y PDF descargado.'
+          : 'No se ubicó el texto: el PDF descargado NO tiene el cambio (incluye una nota al pie).',
       );
     } catch {
       setManualMsg('Error de red al generar el PDF.');
@@ -529,7 +608,8 @@ export default function PDFEditor() {
                   onChange={(e) => setManual((p) => ({ ...p, cover: e.target.checked }))}
                   disabled={!file || manualBusy}
                 />
-                Tapar el texto anterior (útil si el texto nuevo es de otra longitud)
+                Tapar el texto anterior (se hace siempre: el texto previo queda
+                cubierto y el nuevo se escribe encima)
               </label>
               <div className={styles.manualActions}>
                 <button
@@ -553,7 +633,21 @@ export default function PDFEditor() {
             </p>
           )}
 
-          {notes && !error && (
+          {warning && !error && (
+            <p className={styles.warningBox}>
+              <AlertTriangle size={14} />
+              {warning}
+            </p>
+          )}
+
+          {notice && !error && !warning && (
+            <p className={styles.noticeBox}>
+              <CheckCircle2 size={14} />
+              {notice}
+            </p>
+          )}
+
+          {notes && !error && !warning && !notice && (
             <p className={styles.notes}>{notes}</p>
           )}
 
@@ -602,7 +696,8 @@ export default function PDFEditor() {
                       checked={op.cover === true}
                       onChange={(e) => updateOp(idx, { cover: e.target.checked })}
                     />
-                    Tapar el texto previo (recomendado si la cadena cambia de largo)
+                    Tapar el texto previo (se hace siempre: el texto previo queda
+                    cubierto y el nuevo se escribe encima)
                   </label>
                 </div>
               </li>

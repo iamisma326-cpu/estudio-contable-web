@@ -1,26 +1,29 @@
 /**
  * POST /api/pdf-render
  *
- * Recibe { pdfBase64, ops: ReplaceOp[] } y devuelve JSON:
- *   { ok: true, base64: <PDF resultante>, applied: [{page, find, status}] }
+ * Recibe { pdfBase64, ops: ReplaceOp[], fills?, fields? } y devuelve JSON:
+ *   { ok: true, base64: <PDF resultante>, applied: [{page, find, status, matches}] }
  *
  * Implementación:
- *   - Para cada op localiza el texto "find" en el content stream de la página
- *     (parseo propio de operadores PDF: Tm, Tj, TJ, Td, TD, T*, TL, Tf) para
- *     obtener x/y reales. pdf-lib no expone getText().
- *   - Dibuja un rect blanco cubriendo el texto original y redibuja "replace"
- *     encima en el mismo sitio.
- *   - Si no puede ubicar el texto (fuente subset con codificación rara, PDF
- *     escaneado), lo marca status:'not_found' y agrega una banda visible al
- *     pie con el cambio propuesto — honesto en vez de silencioso.
+ *   - Para cada op localiza el texto "find" en la página (pdfjs primero,
+ *     parser propio de respaldo) y devuelve TODAS sus apariciones.
+ *   - Cubre el texto original con un rect blanco y redibuja "replace"
+ *     encima, en el mismo sitio y con el MISMO tamaño de fuente.
+ *   - Si no puede ubicar el texto, lo marca status:'not_found' y agrega una
+ *     banda visible al pie con el cambio propuesto.
  *
- * Autenticación: cookie admin (mismo patrón que /api/admin/*).
+ * La respuesta SIEMPRE incluye `applied` con el estado real de cada
+ * operación: el frontend lo muestra al usuario. Antes se ignoraba y una
+ * edición fallida salía como un PDF idéntico al original, sin aviso.
+ *
+ * Autenticación: JWT de Neon Auth con role = admin (ver api/_auth/guard.ts).
  */
 
-import type { ReqLike, ResLike } from './_admin/auth.js';
-import { verifyCookie, readJsonBody } from './_admin/auth.js';
+import type { ReqLike, ResLike } from './_auth/http.js';
+import { readJsonBody } from './_auth/http.js';
+import { requireAdmin } from './_auth/guard.js';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { findTextCoords, findAnchorCoords } from './_pdf/text.js';
+import { findAllTextCoords, findAnchorCoords } from './_pdf/text.js';
 
 interface ReplaceOp {
   page: number;
@@ -69,10 +72,8 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     res.status(405).json({ ok: false, error: 'method_not_allowed' });
     return;
   }
-  if (!verifyCookie(req.headers)) {
-    res.status(401).json({ ok: false, error: 'not_authenticated' });
-    return;
-  }
+  const admin = await requireAdmin(req, res);
+  if (!admin) return;
 
   const body = (await readJsonBody(req)) as RenderRequest | null;
   const pdfBase64 = typeof body?.pdfBase64 === 'string' ? body.pdfBase64 : '';
@@ -141,10 +142,20 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
   }
 
   try {
-    const pdfDoc = await PDFDocument.load(pdfBuffer);
+    // ignoreEncryption: muchos PDFs oficiales vienen cifrados con contraseña
+    // de usuario VACÍA (solo restringen permisos). pdf-lib lanza
+    // EncryptedPDFError en ese caso y el render entero moría con un
+    // "render_failed" críptico, sin tocar nada.
+    const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontSize = 11;
-    const applied: Array<{ page: number; find: string; status: 'ok' | 'not_found' }> = [];
+    const applied: Array<{
+      page: number;
+      find: string;
+      replace: string;
+      status: 'ok' | 'not_found';
+      matches: number;
+    }> = [];
 
     /* ===== Campos AcroForm: llenar por nombre (antes que nada) ===== */
     let form: ReturnType<PDFDocument['getForm']> | null = null;
@@ -215,20 +226,20 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     for (const op of ops) {
       const pageIndex = op.page - 1;
       if (pageIndex < 0 || pageIndex >= pdfDoc.getPageCount()) {
-        applied.push({ page: op.page, find: op.find, status: 'not_found' });
+        applied.push({ page: op.page, find: op.find, replace: op.replace, status: 'not_found', matches: 0 });
         continue;
       }
       const page = pdfDoc.getPage(pageIndex);
       const { width: w } = page.getSize();
 
-      let coords: { x: number; y: number; width: number; height: number } | null = null;
+      let rects: Array<{ x: number; y: number; width: number; height: number; size: number }> = [];
       try {
-        coords = await findTextCoords(pdfBuffer, pageIndex, op.find, helvetica);
+        rects = await findAllTextCoords(pdfBuffer, pageIndex, op.find, helvetica);
       } catch {
-        coords = null;
+        rects = [];
       }
 
-      if (!coords) {
+      if (!rects.length) {
         // Fallback honesto: banda al pie con el cambio propuesto, visible y
         // auditable. El usuario decide si lo acepta o corrige el "find".
         const noticeY = 30;
@@ -248,28 +259,43 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
           font: helvetica,
           color: rgb(0.7, 0.3, 0.1),
         });
-        applied.push({ page: op.page, find: op.find, status: 'not_found' });
+        applied.push({ page: op.page, find: op.find, replace: op.replace, status: 'not_found', matches: 0 });
         continue;
       }
 
       // Cubre el texto original con blanco y redibuja el reemplazo encima.
-      page.drawRectangle({
-        x: coords.x,
-        y: coords.y,
-        width: Math.max(coords.width, helvetica.widthOfTextAtSize(op.replace, fontSize) + 4),
-        height: Math.max(coords.height, fontSize + 3),
-        color: rgb(1, 1, 1),
-        borderWidth: 0,
-      });
-      page.drawText(op.replace, {
-        x: coords.x + 2,
-        y: coords.y + 2,
-        size: fontSize,
-        font: helvetica,
-        color: rgb(0, 0, 0),
-      });
+      // Se hace en TODAS las apariciones de la página: un DNI aparece en el
+      // párrafo de identidad y en el campo del formulario; dejar uno sin
+      // cambiar es lo que hacía que el usuario viese "el DNI sigue igual".
+      for (const coords of rects) {
+        const textSize = coords.size || fontSize;
+        // El rectángulo tapa EXACTAMENTE el texto original (no se estira al
+        // ancho del texto nuevo: si el reemplazo es más largo, estirarlo
+        // borraría el contenido que viene a continuación en la línea).
+        page.drawRectangle({
+          x: coords.x,
+          y: coords.y,
+          width: coords.width,
+          height: Math.max(coords.height, textSize + 3),
+          color: rgb(1, 1, 1),
+          borderWidth: 0,
+        });
+        page.drawText(op.replace, {
+          x: coords.x + 2,
+          y: coords.y + 2,
+          size: textSize,
+          font: helvetica,
+          color: rgb(0, 0, 0),
+        });
+      }
 
-      applied.push({ page: op.page, find: op.find, status: 'ok' });
+      applied.push({
+        page: op.page,
+        find: op.find,
+        replace: op.replace,
+        status: 'ok',
+        matches: rects.length,
+      });
     }
 
     const outBytes = await pdfDoc.save();
@@ -278,7 +304,13 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     res.status(200).json({
       ok: true,
       base64: outBuffer.toString('base64'),
-      applied: applied.map((a) => ({ page: a.page, find: a.find, status: a.status })),
+      applied: applied.map((a) => ({
+        page: a.page,
+        find: a.find,
+        replace: a.replace,
+        status: a.status,
+        matches: a.matches,
+      })),
       appliedFills: fillResults,
       appliedFields: fieldResults,
     });

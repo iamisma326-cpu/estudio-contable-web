@@ -1,4 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { BookOpen } from 'lucide-react';
+import { apiGet, apiSend } from '../lib/api';
 import { IconCalendar, IconNews, IconSearchTerm, IconCalc, IconScale } from '../components/icons/BrandIcons';
 import useSEO from '../hooks/useSEO';
 import useRevealAnimations from '../hooks/useRevealAnimations';
@@ -68,6 +70,24 @@ export default function ResourcesPage() {
   const [query, setQuery] = useState('');
   const [activeDigit, setActiveDigit] = useState<number | null>(null);
 
+  // Biblioteca del área privada: catálogo administrado desde /admin.
+  const [library, setLibrary] = useState<{ id: string; title: string; description: string; category: string; href: string | null }[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await apiGet<{ resources: typeof library }>('/api/resources');
+      if (!cancelled && res.ok && res.data) setLibrary(res.data.resources);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const recordView = useCallback((id: string) => {
+    void apiSend('/api/resources', 'POST', { id });
+  }, []);
+
   const handleDigitChange = useCallback((digit: number | null) => {
     setActiveDigit(digit);
   }, []);
@@ -96,10 +116,44 @@ export default function ResourcesPage() {
           </h1>
           <p className={styles.lead} data-reveal="up" data-reveal-delay="0.16">
             Calendario de obligaciones, actualidad tributaria y un glosario en
-            español sencillo. Todo gratuito, sin registro.
+            español sencillo. Tu cuenta desbloquea las herramientas de cálculo y
+            la biblioteca de recursos.
           </p>
         </div>
       </section>
+
+      {/* Biblioteca administrada desde el panel */}
+      {library.length > 0 && (
+        <section className={styles.library}>
+          <div className="container">
+            <div className={styles.sectionHead} data-reveal="up">
+              <BookOpen size={26} className={styles.sectionIcon} />
+              <div>
+                <h2 className={styles.subtitle}>Biblioteca de recursos</h2>
+                <p className={styles.sectionLead}>
+                  Guías y herramientas publicadas por el estudio para tus clientes.
+                </p>
+              </div>
+            </div>
+
+            <div className={styles.libraryGrid} data-reveal-group="up">
+              {library.map((resource) => (
+                <a
+                  key={resource.id}
+                  href={resource.href ?? undefined}
+                  className={styles.libraryCard}
+                  data-reveal
+                  onClick={() => recordView(resource.id)}
+                >
+                  <span className={styles.libraryTag}>{resource.category}</span>
+                  <h3>{resource.title}</h3>
+                  <p>{resource.description}</p>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Calendario */}
       <section className={styles.deadlines}>
@@ -110,8 +164,7 @@ export default function ResourcesPage() {
               <h2 className={styles.subtitle}>Cronograma SUNAT 2026</h2>
               <p className={styles.sectionLead}>
                 Tu vencimiento no es un día fijo del mes: depende del último dígito de
-                tu RUC y cambia cada mes. Consulta tus fechas exactas aquí —
-                gratis, sin registro.
+                tu RUC y cambia cada mes. Consulta tus fechas exactas aquí.
               </p>
             </div>
           </div>
@@ -152,7 +205,6 @@ export default function ResourcesPage() {
               <h2 className={styles.subtitle}>Herramientas del día a día</h2>
               <p className={styles.sectionLead}>
                 Datos oficiales y estimaciones rápidas para tus decisiones de hoy.
-                Gratis, sin registro.
               </p>
             </div>
           </div>

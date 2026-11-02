@@ -128,6 +128,37 @@
   cursor: progress;
 }
 
+/* Dos campos cortos en la misma fila (empresa + RUC en el registro) */
+.twoCols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 420px) {
+  .twoCols {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Enlace de alternancia login ↔ registro */
+.switch {
+  margin: 20px 0 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.switch a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.switch a:hover {
+  color: var(--color-accent);
+}
+
 .back {
   display: inline-block;
   margin-top: 22px;

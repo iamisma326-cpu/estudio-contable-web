@@ -9,3 +9,4 @@ dev.log
 .vercel
 .env*
 .vercel-build/
+.neon

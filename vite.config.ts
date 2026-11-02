@@ -7,9 +7,12 @@ import {defineConfig, loadEnv} from 'vite';
 import tipoCambio from './api/tipo-cambio';
 import cronograma from './api/cronograma';
 import rentaAnual from './api/renta-anual';
-import adminLogin from './api/admin/login';
-import adminLogout from './api/admin/logout';
-import adminSession from './api/admin/session';
+import authMe from './api/auth/me';
+import authProfile from './api/auth/profile';
+import resources from './api/resources';
+import adminStats from './api/admin/stats';
+import adminUsers from './api/admin/users';
+import adminResources from './api/admin/resources';
 import pdfEdit from './api/pdf-edit';
 import pdfRender from './api/pdf-render';
 
@@ -22,12 +25,19 @@ interface DevRes {
 }
 
 export default defineConfig(({ mode }) => {
-  // Los handlers serverless leen process.env.GOOGLE_AI_API_KEY / GROQ_API_KEY.
-  // En Vercel llegan del dashboard; en dev, loadEnv las trae de .env al
-  // process.env para que el middleware de /api/* los vea igual que prod.
+  // Los handlers serverless leen process.env (claves de IA, DATABASE_URL de
+  // Neon, NEON_AUTH_*). En Vercel llegan del dashboard; en dev, loadEnv las
+  // trae de .env al process.env para que el middleware de /api/* las vea
+  // igual que en producción.
   const env = loadEnv(mode, process.cwd(), '');
   for (const [k, v] of Object.entries(env)) {
-    if (k.startsWith('GOOGLE_') || k.startsWith('GROQ_') || k.startsWith('ADMIN_')) {
+    if (
+      k.startsWith('GOOGLE_') ||
+      k.startsWith('GROQ_') ||
+      k.startsWith('ADMIN_') ||
+      k.startsWith('DATABASE_URL') ||
+      k.startsWith('NEON_')
+    ) {
       process.env[k] = v;
     }
   }
@@ -87,9 +97,12 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use('/api/tipo-cambio', bridge(tipoCambio));
           server.middlewares.use('/api/cronograma', bridge(cronograma));
           server.middlewares.use('/api/renta-anual', bridge(rentaAnual));
-          server.middlewares.use('/api/admin/login', bridge(adminLogin));
-          server.middlewares.use('/api/admin/logout', bridge(adminLogout));
-          server.middlewares.use('/api/admin/session', bridge(adminSession));
+          server.middlewares.use('/api/auth/me', bridge(authMe));
+          server.middlewares.use('/api/auth/profile', bridge(authProfile));
+          server.middlewares.use('/api/resources', bridge(resources));
+          server.middlewares.use('/api/admin/stats', bridge(adminStats));
+          server.middlewares.use('/api/admin/users', bridge(adminUsers));
+          server.middlewares.use('/api/admin/resources', bridge(adminResources));
           server.middlewares.use('/api/pdf-edit', bridge(pdfEdit));
           server.middlewares.use('/api/pdf-render', bridge(pdfRender));
         },
