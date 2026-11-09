@@ -1,3 +1,4 @@
+import DarkBackground from './DarkBackground';
 import { useRef, useState, useCallback, useEffect } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { Quote, ChevronLeft, ChevronRight, Star } from 'lucide-react';
@@ -109,7 +110,8 @@ export default function Testimonials() {
   const slides = mode === 'marquee' ? [...testimonials, ...testimonials] : testimonials;
 
   return (
-    <section className={styles.section} ref={section}>
+    <section className={styles.section} ref={section} data-dot-section>
+      <DarkBackground tone="light" />
       <div className="container">
         <div className={styles.header} data-reveal="up">
           <span className="eyebrow">Testimonios</span>

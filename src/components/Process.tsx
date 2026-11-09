@@ -1,3 +1,4 @@
+import DarkBackground from './DarkBackground';
 import { useRef } from 'react';
 import { gsap, useGSAP, prefersReducedMotion } from '../lib/gsap';
 import styles from '../styles/Process.module.css';
@@ -59,7 +60,8 @@ export default function Process() {
   );
 
   return (
-    <section className={styles.section} ref={section}>
+    <section className={styles.section} ref={section} data-dot-section>
+      <DarkBackground tone="light" />
       <div className="container">
         <div className={styles.header} data-reveal="up">
           <span className="eyebrow">Cómo trabajamos</span>

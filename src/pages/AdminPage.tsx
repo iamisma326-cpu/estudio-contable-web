@@ -1,3 +1,4 @@
+import DarkBackground from '../components/DarkBackground';
 /**
  * AdminPage — panel de administración.
  *
@@ -47,7 +48,8 @@ export default function AdminPage() {
   }
 
   return (
-    <section className={styles.page}>
+    <section className={styles.page} data-dot-section>
+      <DarkBackground tone="light" />
       <header className={styles.topbar}>
         <div className={styles.topbarInner}>
           <span className={styles.greeting}>

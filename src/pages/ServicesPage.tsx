@@ -1,3 +1,5 @@
+import DarkBackground from '../components/DarkBackground';
+import SpotlightCard from '../components/SpotlightCard';
 import { Check } from 'lucide-react';
 import useSEO from '../hooks/useSEO';
 import useRevealAnimations from '../hooks/useRevealAnimations';
@@ -104,7 +106,8 @@ export default function ServicesPage() {
 
   return (
     <>
-      <section className={styles.hero}>
+      <section className={styles.hero} data-header-tone="dark" data-dot-section>
+        <DarkBackground />
         <div className="container">
           <span className={styles.eyebrow} data-reveal="up">Servicios</span>
           <h1 className={styles.title} data-reveal="up" data-reveal-delay="0.08">
@@ -117,11 +120,12 @@ export default function ServicesPage() {
         </div>
       </section>
 
-      <section className={styles.list}>
+      <section className={styles.list} data-dot-section>
+        <DarkBackground tone="light" />
         <div className="container">
           <div className={styles.grid} data-reveal-group="clip">
             {services.map((s) => (
-              <article key={s.title} className={styles.card} data-reveal>
+              <SpotlightCard as="article" theme="light" spotlightColor="#832c4a" intensity={0.22} borderGlow={0.35} proximity={0} flare={false} key={s.title} className={styles.card} data-reveal>
                 <div className={styles.cardHead}>
                   <span className={styles.tag}>{s.tag}</span>
                   <span className={styles.price}>{s.price}</span>
@@ -136,7 +140,7 @@ export default function ServicesPage() {
                     </li>
                   ))}
                 </ul>
-              </article>
+              </SpotlightCard>
             ))}
           </div>
 
@@ -147,7 +151,8 @@ export default function ServicesPage() {
         </div>
       </section>
 
-      <section className={styles.comparison}>
+      <section className={styles.comparison} data-dot-section>
+        <DarkBackground tone="light" />
         <div className="container">
           <span className={styles.eyebrow} data-reveal="up">Guía rápida</span>
           <h2 className={styles.subtitle} data-reveal="up">¿Qué régimen tributario te conviene?</h2>

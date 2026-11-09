@@ -1,3 +1,4 @@
+import DarkBackground from './DarkBackground';
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import styles from '../styles/Faq.module.css';
@@ -33,7 +34,8 @@ export default function Faq() {
   const [open, setOpen] = useState(0);
 
   return (
-    <section className={styles.section}>
+    <section className={styles.section} data-dot-section>
+      <DarkBackground tone="light" />
       <div className={styles.inner}>
         <div className={styles.header} data-reveal="up">
           <span className="eyebrow">Preguntas frecuentes</span>

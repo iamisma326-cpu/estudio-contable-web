@@ -1,3 +1,4 @@
+import DarkBackground from '../components/DarkBackground';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarDays, CheckCircle2, Clock, FileText } from 'lucide-react';
 import useSEO from '../hooks/useSEO';
@@ -63,7 +64,8 @@ export default function RentaPage() {
 
   return (
     <>
-      <section className={styles.hero}>
+      <section className={styles.hero} data-header-tone="dark" data-dot-section>
+        <DarkBackground />
         <div className="container">
           <span className={styles.eyebrow} data-reveal="up">Guía tributaria 2026</span>
           <h1 className={styles.title} data-reveal="up" data-reveal-delay="0.08">
@@ -81,7 +83,8 @@ export default function RentaPage() {
         </div>
       </section>
 
-      <section className={styles.intro}>
+      <section className={styles.intro} data-dot-section>
+        <DarkBackground tone="light" />
         <div className="container">
           <div className={styles.introGrid}>
             <article className={styles.stepCard} data-reveal="up">
@@ -118,7 +121,8 @@ export default function RentaPage() {
         </div>
       </section>
 
-      <section className={styles.tables}>
+      <section className={styles.tables} data-dot-section>
+        <DarkBackground tone="light" />
         <div className="container">
           <div className={styles.sectionHead} data-reveal="up">
             <div>
@@ -154,7 +158,8 @@ export default function RentaPage() {
         </div>
       </section>
 
-      <section className={styles.faq}>
+      <section className={styles.faq} data-dot-section>
+        <DarkBackground tone="light" />
         <div className="container">
           <div className={styles.sectionHead} data-reveal="up">
             <div>
@@ -176,7 +181,8 @@ export default function RentaPage() {
         </div>
       </section>
 
-      <section className={styles.midCta}>
+      <section className={styles.midCta} data-header-tone="dark" data-dot-section>
+        <DarkBackground tone="dark" />
         <div className="container">
           <div className={styles.midCtaInner} data-reveal="clip">
             <div>

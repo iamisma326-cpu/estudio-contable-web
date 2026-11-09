@@ -364,3 +364,30 @@ html.scroll-locked body {
     scroll-behavior: auto !important;
   }
 }
+
+/* DotField is behind existing content; never intercepts links or form controls. */
+[data-dot-section] { position: relative; isolation: isolate; }
+.dark-dot-background {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(132, 163, 205, 0.22) 1px, transparent 1.5px);
+  background-size: 26px 26px;
+  mask-image: linear-gradient(to bottom, #000, rgba(0, 0, 0, 0.4));
+  border-radius: inherit;
+}
+.dark-dot-background[data-tone="light"] {
+  background-image: radial-gradient(circle, rgba(46, 84, 134, 0.16) 1px, transparent 1.5px);
+}
+.dark-dot-background[data-animated="true"] { background-image: none; }
+
+/* Keep pointer illumination visible across the entire dark surface. */
+.dark-dot-background[data-tone="dark"] {
+  mask-image: none;
+  background-image: radial-gradient(ellipse at 65% 30%, rgba(70, 111, 170, 0.18), transparent 65%);
+  background-size: auto;
+}
+.dark-dot-background[data-tone="dark"][data-animated="true"] { background-image: none; }
+.dark-dot-background[data-tone="dark"] { background-color: #0B1432; }

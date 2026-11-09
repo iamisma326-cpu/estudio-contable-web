@@ -1,3 +1,4 @@
+import DarkBackground from './DarkBackground';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { IconWhatsApp } from './icons/BrandIcons';
@@ -6,7 +7,8 @@ import styles from '../styles/ContactCta.module.css';
 
 export default function ContactCta() {
   return (
-    <section className={styles.section}>
+    <section className={styles.section} data-header-tone="dark" data-dot-section>
+      <DarkBackground tone="dark" />
       <div className={styles.inner} data-reveal="clip">
         <div>
           <h2 className={styles.title}>¿Listo para tener tus números en orden?</h2>

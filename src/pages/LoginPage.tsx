@@ -1,3 +1,4 @@
+import DarkBackground from '../components/DarkBackground';
 /**
  * LoginPage — acceso único para clientes y administración.
  *
@@ -105,7 +106,8 @@ export default function LoginPage() {
   }
 
   return (
-    <section className={styles.section}>
+    <section className={styles.section} data-dot-section>
+      <DarkBackground tone="light" />
       <div className={styles.card}>
         <Link to="/" className={styles.brand} aria-label="Volver al inicio">
           Sánchez Delgado <em>&amp;</em> Asociados

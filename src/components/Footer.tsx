@@ -1,3 +1,4 @@
+import DarkBackground from './DarkBackground';
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Linkedin } from 'lucide-react';
@@ -37,7 +38,8 @@ export default function Footer() {
   );
 
   return (
-    <footer className={styles.footer} ref={root}>
+    <footer className={styles.footer} ref={root} data-header-tone="dark" data-dot-section>
+      <DarkBackground />
       {/* Barra única: marca · navegación · redes */}
       <div className={styles.bar}>
         <Link

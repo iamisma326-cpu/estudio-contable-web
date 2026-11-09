@@ -270,3 +270,27 @@
     margin-top: 14px;
   }
 }
+
+/* Header contrasts with the section underneath; the dark mobile menu uses a light header. */
+.header.dark {
+  background: rgba(7, 14, 34, 0.94);
+  border-bottom-color: rgba(161, 185, 218, 0.16);
+  box-shadow: 0 6px 24px -12px rgba(0, 0, 0, 0.45);
+}
+.dark .logoMark { color: #ECEDEF; --logo-accent: #D699AC; }
+.dark .logoText, .dark .mobileToggle { color: #ECEDEF; }
+.dark .logoText em { color: #D699AC; }
+.dark .logoSub { color: #BBC8DB; }
+.dark .navLink { color: #D9E2EF; }
+.dark .navLink:hover, .dark .navLinkActive { color: #FFFFFF; }
+.dark .navLink::after { background: #D699AC; }
+.dark .contactBtn { background: #ECEDEF; color: #0B1432; }
+.dark .contactBtn:hover { background: #D8E3F2; }
+.logoMark, .logoText, .logoText em, .logoSub, .navLink, .mobileToggle {
+  transition: color var(--transition-speed) ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .header, .logoMark, .logoText, .logoText em, .logoSub, .navLink, .mobileToggle, .contactBtn {
+    transition: none;
+  }
+}

@@ -1,3 +1,4 @@
+import DarkBackground from '../components/DarkBackground';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { CheckCircle2, Paperclip, X } from 'lucide-react';
@@ -108,7 +109,8 @@ export default function ContactPage() {
   };
 
   return (
-    <section className={styles.section}>
+    <section className={styles.section} data-dot-section>
+      <DarkBackground tone="light" />
       <div className={styles.inner}>
         {/* Columna información */}
         <div className={styles.info}>

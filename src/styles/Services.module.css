@@ -140,3 +140,10 @@
     height: 46px;
   }
 }
+
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .card:hover { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: none; }
+}

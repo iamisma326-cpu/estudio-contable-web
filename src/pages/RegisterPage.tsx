@@ -1,3 +1,4 @@
+import DarkBackground from '../components/DarkBackground';
 /**
  * RegisterPage — alta de clientes.
  *
@@ -93,7 +94,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <section className={styles.section}>
+    <section className={styles.section} data-dot-section>
+      <DarkBackground tone="light" />
       <div className={styles.card}>
         <Link to="/" className={styles.brand} aria-label="Volver al inicio">
           Sánchez Delgado <em>&amp;</em> Asociados

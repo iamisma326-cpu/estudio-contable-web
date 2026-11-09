@@ -1,3 +1,4 @@
+import DarkBackground from './DarkBackground';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
@@ -107,8 +108,9 @@ export default function Hero() {
   }, []);
 
   return (
-    <section className={styles.hero} ref={root}>
+    <section className={styles.hero} ref={root} data-header-tone="dark" data-dot-section>
       <span className={styles.heroGlow} aria-hidden="true" />
+      <DarkBackground />
       <div className={styles.inner}>
         <span className={`${styles.eyebrow} heroEyebrow`}>Estudio contable y tributario · Lima, Perú</span>
 

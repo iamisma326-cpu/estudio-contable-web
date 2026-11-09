@@ -1,3 +1,4 @@
+import DarkBackground from '../components/DarkBackground';
 import { IconTarget, IconEye, IconHandshake, IconShieldCheck, IconBulb, IconBadgeCheck } from '../components/icons/BrandIcons';
 import useSEO from '../hooks/useSEO';
 import useRevealAnimations from '../hooks/useRevealAnimations';
@@ -42,7 +43,8 @@ export default function AboutPage() {
 
   return (
     <>
-      <section className={styles.hero}>
+      <section className={styles.hero} data-header-tone="dark" data-dot-section>
+        <DarkBackground />
         <div className="container">
           <span className={styles.eyebrow} data-reveal="up">Nosotros</span>
           <h1 className={styles.title} data-reveal="up" data-reveal-delay="0.08">
@@ -76,7 +78,8 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className={styles.mission}>
+      <section className={styles.mission} data-dot-section>
+        <DarkBackground tone="light" />
         <div className="container">
           <div className={styles.missionGrid} data-reveal-group="up">
             <div className={styles.missionCard} data-reveal>
@@ -107,7 +110,8 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className={styles.values}>
+      <section className={styles.values} data-dot-section>
+        <DarkBackground tone="light" />
         <div className="container">
           <span className={styles.eyebrow} data-reveal="up">Nuestros valores</span>
           <h2 className={styles.subtitle} data-reveal="up">Lo que nos define frente al cliente</h2>
@@ -123,7 +127,8 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className={styles.team}>
+      <section className={styles.team} data-dot-section>
+        <DarkBackground tone="light" />
         <div className="container">
           <span className={styles.eyebrow} data-reveal="up">Equipo</span>
           <h2 className={styles.subtitle} data-reveal="up">Personas detrás de tus números</h2>

@@ -1,3 +1,4 @@
+import DarkBackground from '../components/DarkBackground';
 /**
  * PanelPage — espacio privado del cliente.
  *
@@ -51,7 +52,8 @@ export default function PanelPage() {
   if (!me) return null;
 
   return (
-    <section className={styles.page}>
+    <section className={styles.page} data-dot-section>
+      <DarkBackground tone="light" />
       <header className={styles.topbar}>
         <div className={styles.topbarInner}>
           <span className={styles.greeting}>

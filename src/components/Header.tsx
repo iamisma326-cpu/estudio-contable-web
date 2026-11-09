@@ -16,6 +16,7 @@ const navItems = [
 ];
 
 export default function Header() {
+  const [darkSection, setDarkSection] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
@@ -24,6 +25,40 @@ export default function Header() {
   const droppedRef = useRef(false);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  // Track the section at the lower edge of the fixed header, including lazy routes.
+  useEffect(() => {
+    let frame = 0;
+    let sections: HTMLElement[] = [];
+    const measure = () => {
+      frame = 0;
+      const edge = (headerRef.current?.getBoundingClientRect().bottom ?? 78) + 2;
+      setDarkSection(sections.some(section => {
+        const rect = section.getBoundingClientRect();
+        return rect.top <= edge && rect.bottom > edge;
+      }));
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    const collect = () => {
+      sections = Array.from(document.querySelectorAll<HTMLElement>('[data-header-tone="dark"]'));
+      schedule();
+    };
+    const observer = new MutationObserver(collect);
+    observer.observe(document.getElementById('app-root') ?? document.body, { childList: true, subtree: true });
+    const resize = new ResizeObserver(schedule);
+    const main = document.querySelector('main');
+    if (main) resize.observe(main);
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    collect();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      resize.disconnect();
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+  }, [location.pathname]);
 
   /* Estado "scrolled" con ScrollTrigger en vez de un listener de scroll con
      setState por evento: el callback solo corre al cruzar el umbral. */
@@ -102,7 +137,7 @@ export default function Header() {
   return (
     <>
       <header
-        className={`${styles.header} ${isScrolled ? styles.scrolled : ''}`}
+        className={`${styles.header} ${isScrolled ? styles.scrolled : ''} ${!darkSection && !menuOpen ? styles.dark : ''}`}
         ref={headerRef}
       >
         <div className={styles.inner}>

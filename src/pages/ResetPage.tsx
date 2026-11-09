@@ -1,3 +1,4 @@
+import DarkBackground from '../components/DarkBackground';
 /**
  * ResetPage — define la contraseña nueva con el token del correo.
  *
@@ -66,7 +67,8 @@ export default function ResetPage() {
 
   if (!token) {
     return (
-      <section className={styles.section}>
+      <section className={styles.section} data-dot-section>
+        <DarkBackground tone="light" />
         <div className={styles.card}>
           <span className={styles.eyebrow}>Área privada</span>
           <h1 className={styles.title}>Enlace no válido</h1>
@@ -82,7 +84,8 @@ export default function ResetPage() {
   }
 
   return (
-    <section className={styles.section}>
+    <section className={styles.section} data-dot-section>
+      <DarkBackground tone="light" />
       <div className={styles.card}>
         <Link to="/" className={styles.brand} aria-label="Volver al inicio">
           Sánchez Delgado <em>&amp;</em> Asociados

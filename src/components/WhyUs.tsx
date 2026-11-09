@@ -1,3 +1,4 @@
+import DarkBackground from './DarkBackground';
 import { useRef } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { gsap, useGSAP, prefersReducedMotion } from '../lib/gsap';
@@ -63,7 +64,8 @@ export default function WhyUs() {
   );
 
   return (
-    <section className={styles.section} ref={section}>
+    <section className={styles.section} ref={section} data-header-tone="dark" data-dot-section>
+      <DarkBackground />
       <div className={styles.inner}>
         <div className={styles.content} data-reveal="up">
           <span className={styles.eyebrow}>¿Por qué nosotros?</span>

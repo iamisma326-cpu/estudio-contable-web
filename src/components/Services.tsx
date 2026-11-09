@@ -1,3 +1,5 @@
+import DarkBackground from './DarkBackground';
+import SpotlightCard from './SpotlightCard';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Check } from 'lucide-react';
 import { IconLedger, IconScale, IconPayroll, IconAudit } from './icons/BrandIcons';
@@ -32,7 +34,8 @@ const services = [
 
 export default function Services() {
   return (
-    <section className={styles.section}>
+    <section className={styles.section} data-dot-section>
+      <DarkBackground tone="light" />
       <div className="container">
         <div className={styles.header} data-reveal="up">
           <span className="eyebrow">Servicios</span>
@@ -45,7 +48,7 @@ export default function Services() {
 
         <div className={styles.grid}>
           {services.map((s) => (
-            <article key={s.title} className={styles.card} data-reveal="clip">
+            <SpotlightCard as="article" theme="light" spotlightColor="#832c4a" intensity={0.22} borderGlow={0.35} proximity={0} flare={false} key={s.title} className={styles.card} data-reveal="clip">
               <span className={styles.icon}>
                 <s.icon size={26} />
               </span>
@@ -59,7 +62,7 @@ export default function Services() {
                   </li>
                 ))}
               </ul>
-            </article>
+            </SpotlightCard>
           ))}
         </div>
 
