@@ -371,6 +371,64 @@
 
 /* ===== Tabla ===== */
 
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.toolbar .muted {
+  margin: 0;
+}
+
+.formTitle {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* Opciones poco frecuentes (enlace, orden, adjunto) plegadas por defecto. */
+.advanced {
+  border: 1px solid rgba(11, 20, 50, 0.08);
+  border-radius: var(--border-radius-sm);
+  padding: 10px 12px;
+}
+
+.advanced > summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  list-style: none;
+}
+
+.advanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced > summary::before {
+  content: '▸ ';
+  display: inline-block;
+  transition: transform var(--transition-speed) ease;
+}
+
+.advanced[open] > summary::before {
+  content: '▾ ';
+}
+
+.advanced[open] > summary {
+  margin-bottom: 10px;
+}
+
+.advanced > * + * {
+  margin-top: 10px;
+}
+
 .tableWrap {
   overflow-x: auto;
   background: #fff;

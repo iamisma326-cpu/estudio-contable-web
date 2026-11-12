@@ -11,6 +11,7 @@ import { query, queryOne } from '../_db/db.js';
 import type { ReqLike, ResLike } from '../_auth/http.js';
 import { applyCors, methodNotAllowed, queryParam, readJsonBody } from '../_auth/http.js';
 import { requireAdmin } from '../_auth/guard.js';
+import { deleteObject } from '../_storage/s3.js';
 
 interface ResourceRow {
   id: string;
@@ -144,7 +145,33 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
       res.status(400).json({ ok: false, error: 'invalid_id' });
       return;
     }
+    // Recuperamos file_key antes de borrar: si no se limpia el objeto, queda
+    // huérfano en el bucket y ya no hay forma de alcanzarlo desde la UI.
+    const target = await queryOne<{ file_key: string | null }>(
+      'SELECT file_key FROM public.resources WHERE id = $1 LIMIT 1',
+      [id]
+    );
+
+    if (!target) {
+      res.status(200).json({ ok: true, deleted: false });
+      return;
+    }
+
     const deleted = await query('DELETE FROM public.resources WHERE id = $1 RETURNING id', [id]);
+
+    if (target.file_key) {
+      let fileRemoved = true;
+      try {
+        await deleteObject(target.file_key);
+      } catch {
+        // La fila ya no existe; si el objeto tampoco, no hay nada que limpiar.
+        // Si falló por otra razón, se lo decimos al admin en vez de callarlo.
+        fileRemoved = false;
+      }
+      res.status(200).json({ ok: true, deleted: deleted.length > 0, fileRemoved });
+      return;
+    }
+
     res.status(200).json({ ok: true, deleted: deleted.length > 0 });
     return;
   }

@@ -3,13 +3,17 @@
  * privado y baja. Lo que se publica aquí es exactamente lo que ve el cliente
  * en el panel del cliente (/panel, pestaña Biblioteca).
  *
+ * El uso real es mantenimiento (renombrar "Cronograma SUNAT 2026" a 2027,
+ * ocultar lo que ya no aplica). Por eso el formulario está plegado: la
+ * tabla manda y solo se abre al editar o al crear un recurso nuevo.
+ *
  * Los adjuntos van a Object Storage (bucket privado): se sube con un PUT
  * prefirmado y la descarga se firma al momento, nunca por URL pública.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { apiGet, apiSend, getAuthToken } from '../../lib/api';
+import { apiGet, apiSend } from '../../lib/api';
 import type { AdminResource, ResourcesResponse } from '../../lib/adminTypes';
 import styles from '../../styles/AdminPage.module.css';
 
@@ -41,7 +45,9 @@ export default function ResourcesPanel() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // null = formulario cerrado. '' = creando. id = editando ese recurso.
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -58,6 +64,15 @@ export default function ResourcesPanel() {
     void load();
   }, [load]);
 
+  function openCreate() {
+    setEditingId('');
+    setForm(EMPTY_FORM);
+    setFile(null);
+    setFormOpen(true);
+    setError(null);
+    setNotice(null);
+  }
+
   function startEdit(resource: AdminResource) {
     setEditingId(resource.id);
     setForm({
@@ -68,6 +83,8 @@ export default function ResourcesPanel() {
       sort_order: String(resource.sort_order),
     });
     setFile(null);
+    setFormOpen(true);
+    setError(null);
     setNotice(null);
   }
 
@@ -75,6 +92,7 @@ export default function ResourcesPanel() {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setFile(null);
+    setFormOpen(false);
   }
 
   /** Sube el binario al bucket privado y lo vincula al recurso. */
@@ -138,8 +156,12 @@ export default function ResourcesPanel() {
       sort_order: Number(form.sort_order) || 0,
     };
 
-    const res = editingId
-      ? await apiSend<{ resource: AdminResource }>('/api/admin/resources', 'PATCH', { id: editingId, ...payload })
+    const isEdit = Boolean(editingId);
+    const res = isEdit
+      ? await apiSend<{ resource: AdminResource }>('/api/admin/resources', 'PATCH', {
+          id: editingId,
+          ...payload,
+        })
       : await apiSend<{ resource: AdminResource }>('/api/admin/resources', 'POST', payload);
 
     if (!res.ok || !res.data?.resource) {
@@ -159,7 +181,7 @@ export default function ResourcesPanel() {
     }
 
     setSaving(false);
-    setNotice(editingId ? 'Recurso actualizado.' : 'Recurso creado.');
+    setNotice(isEdit ? 'Recurso actualizado.' : 'Recurso creado.');
     resetForm();
     await load();
   }
@@ -191,83 +213,115 @@ export default function ResourcesPanel() {
   }
 
   async function remove(resource: AdminResource) {
-    if (!window.confirm(`¿Eliminar "${resource.title}" del catálogo?`)) return;
+    const warning = resource.file_name
+      ? `¿Eliminar "${resource.title}" del catálogo? También se borrará su archivo adjunto.`
+      : `¿Eliminar "${resource.title}" del catálogo?`;
+    if (!window.confirm(warning)) return;
     setBusyId(resource.id);
-    const res = await apiSend(`/api/admin/resources?id=${resource.id}`, 'DELETE');
+    const res = await apiSend<{ ok: boolean; fileRemoved?: boolean }>(
+      `/api/admin/resources?id=${resource.id}`,
+      'DELETE'
+    );
     setBusyId(null);
     if (!res.ok) {
       setError('No se pudo eliminar el recurso.');
       return;
     }
+    if (res.data?.fileRemoved === false) {
+      setError('El recurso se eliminó, pero su archivo no pudo borrarse del almacenamiento.');
+    }
     if (editingId === resource.id) resetForm();
     await load();
   }
 
+  const isEdit = Boolean(editingId);
+
   return (
     <>
-      <form className={styles.form} onSubmit={onSubmit}>
-        <div className={styles.formRow}>
-          <input
-            className={styles.input}
-            placeholder="Título del recurso"
-            value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            aria-label="Título"
-            required
-          />
-          <input
-            className={styles.input}
-            placeholder="Categoría (herramienta, guía…)"
-            value={form.category}
-            onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-            aria-label="Categoría"
-          />
-          <input
-            className={styles.input}
-            placeholder="Enlace (/panel?tab=herramientas o URL)"
-            value={form.href}
-            onChange={(e) => setForm((f) => ({ ...f, href: e.target.value }))}
-            aria-label="Enlace"
-          />
-          <input
-            className={styles.input}
-            type="number"
-            placeholder="Orden"
-            value={form.sort_order}
-            onChange={(e) => setForm((f) => ({ ...f, sort_order: e.target.value }))}
-            aria-label="Orden"
-          />
-        </div>
-        <input
-          className={styles.input}
-          placeholder="Descripción breve"
-          value={form.description}
-          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          aria-label="Descripción"
-        />
-        <label className={styles.fileField}>
-          <span className={styles.fileLabel}>Adjunto privado (opcional, máx. 25 MB)</span>
-          <input
-            type="file"
-            className={styles.fileInput}
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.zip,.png,.jpg,.jpeg"
-          />
-        </label>
-        <div className={styles.formActions}>
-          <button type="submit" className={styles.primaryBtn} disabled={saving}>
-            {saving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Añadir recurso'}
-          </button>
-          {editingId && (
-            <button type="button" className={styles.miniBtn} onClick={resetForm}>
-              Cancelar edición
-            </button>
-          )}
-        </div>
-      </form>
+      <div className={styles.toolbar}>
+        <p className={styles.muted}>
+          Lo que está publicado aquí es lo que el cliente ve en su Biblioteca.
+        </p>
+        <button type="button" className={styles.primaryBtn} onClick={openCreate}>
+          Nuevo recurso
+        </button>
+      </div>
 
       {error && <p className={styles.alert}>{error}</p>}
       {notice && <p className={styles.alert + ' ' + styles.success}>{notice}</p>}
+
+      {formOpen && (
+        <form className={styles.form} onSubmit={onSubmit}>
+          <h3 className={styles.formTitle}>
+            {isEdit ? 'Editar recurso' : 'Nuevo recurso'}
+          </h3>
+
+          <div className={styles.formRow}>
+            <input
+              className={styles.input}
+              placeholder="Título del recurso"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              aria-label="Título"
+              required
+            />
+            <input
+              className={styles.input}
+              placeholder="Categoría (herramienta, guía…)"
+              value={form.category}
+              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+              aria-label="Categoría"
+            />
+          </div>
+
+          <input
+            className={styles.input}
+            placeholder="Descripción breve"
+            value={form.description}
+            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+            aria-label="Descripción"
+          />
+
+          <details className={styles.advanced}>
+            <summary>Opciones avanzadas (enlace, orden, adjunto)</summary>
+            <div className={styles.formRow}>
+              <input
+                className={styles.input}
+                placeholder="Enlace (/panel?tab=herramientas o URL)"
+                value={form.href}
+                onChange={(e) => setForm((f) => ({ ...f, href: e.target.value }))}
+                aria-label="Enlace"
+              />
+              <input
+                className={styles.input}
+                type="number"
+                placeholder="Orden"
+                value={form.sort_order}
+                onChange={(e) => setForm((f) => ({ ...f, sort_order: e.target.value }))}
+                aria-label="Orden"
+              />
+            </div>
+            <label className={styles.fileField}>
+              <span className={styles.fileLabel}>Adjunto privado (opcional, máx. 25 MB)</span>
+              <input
+                type="file"
+                className={styles.fileInput}
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.zip,.png,.jpg,.jpeg"
+              />
+            </label>
+          </details>
+
+          <div className={styles.formActions}>
+            <button type="submit" className={styles.primaryBtn} disabled={saving}>
+              {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Crear recurso'}
+            </button>
+            <button type="button" className={styles.miniBtn} onClick={resetForm}>
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>
