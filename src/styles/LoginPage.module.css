@@ -79,6 +79,8 @@
 
 .input {
   height: 44px;
+  width: 100%;
+  min-width: 0;
   padding: 0 14px;
   border: 1px solid rgba(11, 20, 50, 0.16);
   border-radius: 9px;
@@ -128,11 +130,24 @@
   cursor: progress;
 }
 
-/* Dos campos cortos en la misma fila (empresa + RUC en el registro) */
+/* Dos campos cortos en la misma fila (empresa + RUC en el registro).
+   `minmax(0, 1fr)` y no `1fr`: una pista `1fr` no baja de min-content, y el
+   input del RUC (placeholder de 11 dígitos + padding) empujaba la columna
+   más allá de la tarjeta y abría scroll horizontal. */
 .twoCols {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
+}
+
+/* `.field` es flex en columna: sin esto su ancho mínimo lo fija el input. */
+.twoCols > * {
+  min-width: 0;
+}
+
+.twoCols .input {
+  min-width: 0;
+  width: 100%;
 }
 
 @media (max-width: 420px) {
