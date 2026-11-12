@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Linkedin } from 'lucide-react';
 import { useGSAP, gsap } from '../lib/gsap';
+import { useSession } from '../hooks/useSession';
 import LogoMark from './icons/LogoMark';
 import styles from '../styles/Footer.module.css';
 
@@ -10,13 +11,18 @@ const navLinks = [
   { label: 'Inicio', link: '/' },
   { label: 'Nosotros', link: '/nosotros' },
   { label: 'Servicios', link: '/servicios' },
-  { label: 'Mi panel', link: '/panel' },
   { label: 'Renta Anual 2025', link: '/renta-anual-2025' },
   { label: 'Contacto', link: '/contacto' },
 ];
 
 export default function Footer() {
   const root = useRef<HTMLElement>(null);
+  /* Mismo criterio que la cabecera: "Mi panel" solo con sesión válida. */
+  const { authUser, me } = useSession();
+  const signedIn = Boolean(authUser && me);
+  const links = signedIn
+    ? [...navLinks.slice(0, 3), { label: 'Mi panel', link: '/panel' }, ...navLinks.slice(3)]
+    : navLinks;
 
   /* Entrada por columnas al llegar al final de la página. */
   useGSAP(
@@ -55,7 +61,7 @@ export default function Footer() {
         </Link>
 
         <nav className={styles.nav} data-reveal aria-label="Mapa del sitio">
-          {navLinks.map((l) => (
+          {links.map((l) => (
             <Link key={l.link} to={l.link} className={styles.navLink}>
               {l.label}
             </Link>

@@ -4,6 +4,7 @@ import { Menu, X, Phone } from 'lucide-react';
 import { gsap, useGSAP, ScrollTrigger } from '../lib/gsap';
 import { lockScroll } from '../lib/scrollLock';
 import useFocusTrap from '../hooks/useFocusTrap';
+import { useSession } from '../hooks/useSession';
 import LogoMark from './icons/LogoMark';
 import styles from '../styles/Header.module.css';
 
@@ -11,11 +12,28 @@ const navItems = [
   { label: 'Inicio', link: '/' },
   { label: 'Nosotros', link: '/nosotros' },
   { label: 'Servicios', link: '/servicios' },
-  { label: 'Mi panel', link: '/panel' },
-  { label: 'Acceso', link: '/login' },
 ];
 
+/* "Mi panel" es la entrada al área privada, así que solo aparece con sesión
+   válida; sin sesión la única puerta es "Acceso". */
+const PANEL_ITEM = { label: 'Mi panel', link: '/panel' };
+
+/** Devuelve la navegación según la sesión y el rol. */
+function useNavItems() {
+  const { authUser, me } = useSession();
+  const signedIn = Boolean(authUser && me);
+  return [
+    ...navItems,
+    ...(signedIn ? [PANEL_ITEM] : []),
+    // Con sesión de administración el destino útil es /admin, no el login.
+    signedIn && me?.role === 'admin'
+      ? { label: 'Admin', link: '/admin' }
+      : { label: 'Acceso', link: '/login' },
+  ];
+}
+
 export default function Header() {
+  const items = useNavItems();
   const [darkSection, setDarkSection] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -154,7 +172,7 @@ export default function Header() {
           </Link>
 
           <nav className={styles.nav} aria-label="Navegación principal">
-            {navItems.map((item) => (
+            {items.map((item) => (
               <NavLink
                 key={item.link}
                 to={item.link}
@@ -193,7 +211,7 @@ export default function Header() {
         aria-hidden={!menuOpen}
       >
         <nav className={styles.mobileNav} aria-label="Navegación móvil">
-          {navItems.map((item, i) => (
+          {items.map((item, i) => (
             <NavLink
               key={item.link}
               to={item.link}
