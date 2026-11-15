@@ -137,14 +137,17 @@ try {
   );
   const periodoId = per[0].id;
 
+  // El fixture ponía el nombre del cliente en razon_emisor, que es justo el dato
+  // equivocado: en una venta razon_emisor es uno mismo. Así el test acompañaba
+  // al bug en vez de detectarlo.
   await query(
     `INSERT INTO public.comprobantes
        (cliente_id, periodo_id, tipo, operacion, serie, numero, fecha_emision, ruc_emisor,
-        ruc_receptor, razon_emisor, moneda, base, igv, exonerado, total, afectacion, origen, confianza, estado)
+        ruc_receptor, razon_emisor, razon_receptor, moneda, base, igv, exonerado, total, afectacion, origen, confianza, estado)
      VALUES
-       ($1,$2,'factura','venta','F001','1','2026-11-02','20999999961','20400000001','CLIENTE UNO','PEN',1000,180,0,1180,'10','xml',0.99,'confirmado'),
-       ($1,$2,'factura','compra','F002','1','2026-11-04','20131312935','20999999961','PROV UNO','PEN',600,108,0,708,'10','xml',0.99,'confirmado'),
-       ($1,$2,'factura','compra','F002','2','2026-11-05','20131312935','20999999961','PROV PENDIENTE','PEN',999,179.82,0,1178.82,'10','xml',0.5,'pendiente')`,
+       ($1,$2,'factura','venta','F001','1','2026-11-02','20999999961','20400000001','ZZ LIBRO CLIENTE','CLIENTE UNO','PEN',1000,180,0,1180,'10','xml',0.99,'confirmado'),
+       ($1,$2,'factura','compra','F002','1','2026-11-04','20131312935','20999999961','PROV UNO','ZZ LIBRO CLIENTE','PEN',600,108,0,708,'10','xml',0.99,'confirmado'),
+       ($1,$2,'factura','compra','F002','2','2026-11-05','20131312935','20999999961','PROV PENDIENTE','ZZ LIBRO CLIENTE','PEN',999,179.82,0,1178.82,'10','xml',0.5,'pendiente')`,
     [clienteId, periodoId]
   );
 
@@ -213,6 +216,9 @@ try {
 
     const ventas = leerEntrada(zip, 'xl/worksheets/sheet1.xml') ?? '';
     check('Ventas trae el nombre del cliente', ventas.includes('CLIENTE UNO'));
+    // En el libro de ventas la razón social es la del cliente; si sale la
+    // propia, el libro declara que la empresa se facturó a sí misma.
+    check('Ventas NO nombra al propio emisor', !ventas.includes('ZZ LIBRO CLIENTE'));
     const compras = leerEntrada(zip, 'xl/worksheets/sheet2.xml') ?? '';
     check('Compras trae el proveedor confirmado', compras.includes('PROV UNO'));
     check('Compras NO trae el pendiente', !compras.includes('PROV PENDIENTE'), compras.slice(0, 200));

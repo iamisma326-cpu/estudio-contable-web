@@ -280,6 +280,20 @@ export default function ComprobantesPanel() {
     void cargarResumenPLE();
   }, [cargarResumenPLE]);
 
+  /**
+   * Recarga la tabla y el resumen del PLE a la vez.
+   *
+   * Los dos leen el mismo período y los dos cambian con las mismas acciones
+   * (subir, guardar, confirmar, descartar). Recargar solo la lista dejaba la
+   * pantalla contradiciéndose: la fila decía CONFIRMADO y las tarjetas seguían
+   * diciendo "no hay comprobantes confirmados en este período", con la base
+   * correcta. El resumen también se quedaba viejo al subir, no solo al
+   * confirmar.
+   */
+  const refrescar = useCallback(async () => {
+    await Promise.all([cargarLista(), cargarResumenPLE()]);
+  }, [cargarLista, cargarResumenPLE]);
+
   /** Descarga el libro. El nombre lo pone el servidor: lo fija SUNAT. */
   async function descargarPLE(formato: '14.1' | '8.1') {
     setDescargando(formato);
@@ -391,7 +405,7 @@ export default function ComprobantesPanel() {
     }
 
     if (fileRef.current) fileRef.current.value = '';
-    await cargarLista();
+    await refrescar();
   }
 
   async function guardar() {
@@ -407,7 +421,7 @@ export default function ComprobantesPanel() {
       if (r.ok) {
         setLectura(null);
         if (fileRef.current) fileRef.current.value = '';
-        await cargarLista();
+        await refrescar();
       } else {
         setErrorLectura(r.data?.error ?? 'No se pudo guardar el comprobante.');
       }
@@ -422,7 +436,7 @@ export default function ComprobantesPanel() {
     if (!r.ok) setErrorLista(r.data && typeof r.data === 'object' && 'error' in r.data
       ? String((r.data as { error: string }).error)
       : 'No se pudo actualizar el comprobante.');
-    await cargarLista();
+    await refrescar();
     setOcupadoId(null);
   }
 

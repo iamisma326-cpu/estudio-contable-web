@@ -4,7 +4,8 @@ Documento de traspaso. Recoge qué se construyó, qué se verificó de verdad, q
 quedó sin verificar y qué falta. Escrito para que otra persona pueda continuar
 sin reconstruir el contexto.
 
-**Última actualización:** sesión del 15/11/2026, sobre el commit `990c6ce`.
+**Última actualización:** sesión del 15/11/2026, segunda pasada, sobre el commit
+`17109ff` (ya desplegado) más los cambios de esta sesión.
 
 ---
 
@@ -178,16 +179,16 @@ estilo.
 
 ## 3. Verificación real (no solo tests)
 
-Superficie de pruebas: **905 casos, 0 fallos**.
+Superficie de pruebas: **908 casos, 0 fallos**.
 
 | Suite | Casos |
 |---|---|
-| `npm run test` (lógica) | 689 |
+| `npm run test` (lógica) | 691 |
 | `test:api` | 46 |
 | `test:clientes` | 14 |
 | `test:ple-api` | 35 |
 | `test:liquidacion` | 27 |
-| `test:libro` | 37 |
+| `test:libro` | 38 |
 | `test:persistencia` | 29 |
 | `test:renta-ejercicio` | 28 |
 
@@ -269,34 +270,26 @@ ventas, siendo lo normal. Ahora solo se avisa cuando el libro quedaría vacío.
 200 con `guardado: false` se leía como éxito. Un mensaje de éxito falso es peor
 que un error: el asistente da el trabajo por hecho.
 
+**g) El arreglo del Excel quedó a medias: la columna salía vacía.**
+El commit anterior corrigió el generador para que la hoja Ventas tomara la
+contraparte, pero `/api/libro` no seleccionaba `razon_receptor` en su constante
+`CAMPOS` (`api/_rutas/libro.ts`). El generador recibía `null` y escribía vacío:
+el síntoma pasó de "nombre equivocado" a "columna en blanco", que se nota menos.
+Lo delató `test:libro` en cuanto el fixture se corrigió. Lección: arreglar quien
+escribe sin revisar quién lo alimenta deja el defecto en otra capa.
+
+**h) El resumen del PLE no se refrescaba.**
+Tras confirmar, la tabla decía `CONFIRMADO` y las tarjetas seguían diciendo "No
+hay comprobantes confirmados en este período". `accion()` solo volvía a llamar a
+`cargarLista()`. El mismo olvido estaba en la subida individual y en la subida
+por lote: el resumen también se quedaba viejo al guardar. Ahora los tres llaman
+a `refrescar()`, que recarga lista y resumen juntos.
+
 ---
 
 ## 4. Pendientes
 
-### 4.1 Pendientes inmediatos (cambios sin commitear)
-
-Quedaron tres archivos modificados sin confirmar al terminar. **Están en el
-árbol de trabajo, no en git:**
-
-| Archivo | Cambio |
-|---|---|
-| `api/_lib/libro-excel.ts` | columna "Razón social" usa la contraparte; glosa del Diario también |
-| `scripts/test-excel.ts` | 2 casos de regresión del nombre de contraparte |
-| `src/components/admin/ComprobantesPanel.tsx` | lote envía `guardar: true` y cuenta por `guardado` |
-
-El arreglo del Excel está probado: los dos casos nuevos fallan sin el cambio y
-pasan con él (`59 OK`). **Falta commitear, desplegar y volver a descargar el
-Excel de producción para confirmar el nombre del cliente en la hoja Ventas.**
-
-### 4.2 Defecto de UI conocido, sin arreglar
-
-**El resumen de PLE no se refresca al confirmar un comprobante.** Tras pulsar
-Confirmar, la tabla muestra `CONFIRMADO` pero las tarjetas siguen diciendo "No
-hay comprobantes confirmados en este período". Los datos en la base son
-correctos; es solo que `cargarResumenPLE` no se vuelve a llamar. Se corrige
-llamándola junto a `cargarLista` en el manejador de Confirmar/Descartar.
-
-### 4.3 Verificaciones que nunca se hicieron
+### 4.1 Verificaciones que nunca se hicieron
 
 Estas son las que más peso tienen, y no las puede hacer un agente solo:
 
@@ -316,7 +309,12 @@ Estas son las que más peso tienen, y no las puede hacer un agente solo:
    siguiendo el formato UBL 2.1, con RUC de dígito verificador válido. Sirven
    para validar el flujo, pero no son operaciones reales.
 
-### 4.4 Funcionalidad que falta
+4. **No consta que se haya mirado el Excel de producción después de desplegar.**
+   La columna "Razón social" de la hoja Ventas salía vacía por el defecto g), y
+   eso solo se descubrió con `test:libro`, no con el archivo real. Descargarlo y
+   revisar esa columna es lo único que cierra el punto.
+
+### 4.2 Funcionalidad que falta
 
 - **Detracciones (SPOT).** Los campos 31-32 del registro de compras van vacíos.
   Es una obligación real para ciertos servicios y bienes.
@@ -328,9 +326,10 @@ Estas son las que más peso tienen, y no las puede hacer un agente solo:
   el alta sea un acto administrativo puntual, no operación diaria.
 - **Autoconfirmación.** Deliberadamente no existe en v1.
 
-### 4.5 Higiene del repositorio
+### 4.3 Higiene del repositorio
 
-- Ramas ya fusionadas sin borrar: `refactor/router-api` y otras.
+- Ramas ya fusionadas sin borrar: `refactor/router-api` e `ismael/periwinkle`
+  (esta última con un worktree en `../orca/workspaces/…/periwinkle`).
 - Sin seguimiento en git (nunca se han commiteado, y `git add -A` los
   arrastraría): `.agents/`, `promo-video/`, `refs/`, `scripts/gen-dj-test.mjs`,
   `scripts/probe-regression-locate.mjs`, `skills-lock.json`.
@@ -419,16 +418,14 @@ justo para validar con SUNAT antes de registrar nada.
 
 En orden de valor:
 
-1. **Commitear y desplegar los tres archivos pendientes** (§4.1) y comprobar el
-   nombre del cliente en el Excel de producción.
-2. **Arreglar el refresco del resumen PLE tras confirmar** (§4.2). Es una línea
-   y evita una confusión concreta.
-3. **Conseguir XML de un cliente real** y pasarlos por
+1. **Desplegar los arreglos de esta sesión** y descargar el Excel de producción
+   para mirar la columna "Razón social" de la hoja Ventas (§4.1, punto 4).
+2. **Conseguir XML de un cliente real** y pasarlos por
    `npm run ple:desde`, luego subir los `.TXT` al validador de SUNAT con Clave
    SOL. Es el único paso que puede convertir "formato correcto" en "SUNAT lo
    acepta".
-4. **Cotejar una liquidación mensual contra una declaración ya presentada.** Un
+3. **Cotejar una liquidación mensual contra una declaración ya presentada.** Un
    contador con un período cerrado basta.
-5. Detracciones (SPOT) en el registro de compras.
-6. Libro Diario 5.1.
-7. Visión para fotos, el último.
+4. Detracciones (SPOT) en el registro de compras.
+5. Libro Diario 5.1.
+6. Visión para fotos, el último.

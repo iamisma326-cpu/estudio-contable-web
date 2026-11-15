@@ -61,7 +61,7 @@ function tasaPagoACuenta(regimen: string): number {
 }
 
 const CAMPOS = `tipo, operacion, serie, numero, fecha_emision, ruc_emisor, ruc_receptor,
-                razon_emisor, moneda, tipo_cambio, base, igv, exonerado, total,
+                razon_emisor, razon_receptor, moneda, tipo_cambio, base, igv, exonerado, total,
                 afectacion, origen, confianza, estado`;
 
 export default async function handler(req: ReqLike, res: ResLike): Promise<void> {
