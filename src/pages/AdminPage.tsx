@@ -7,6 +7,7 @@ import DarkBackground from '../components/DarkBackground';
  *   Usuarios  búsqueda, filtros, rol, suspensión y baja
  *   Comprobantes  bandeja de facturas: subir, revisar y confirmar
  *   Liquidación   IGV del mes y pago a cuenta de renta
+ *   Renta anual   impuesto del ejercicio (DJ 710)
  *   Recursos  catálogo del área privada
  *   Editor    herramienta de edición asistida de PDF (PDFEditor)
  *
@@ -24,6 +25,7 @@ import UsersPanel from '../components/admin/UsersPanel';
 import ResourcesPanel from '../components/admin/ResourcesPanel';
 import ComprobantesPanel from '../components/admin/ComprobantesPanel';
 import LiquidacionPanel from '../components/admin/LiquidacionPanel';
+import RentaAnualPanel from '../components/admin/RentaAnualPanel';
 import styles from '../styles/AdminPage.module.css';
 
 const TABS = [
@@ -31,6 +33,7 @@ const TABS = [
   { id: 'usuarios', label: 'Usuarios' },
   { id: 'comprobantes', label: 'Comprobantes' },
   { id: 'liquidacion', label: 'Liquidación' },
+  { id: 'renta-anual', label: 'Renta anual' },
   { id: 'recursos', label: 'Recursos' },
   { id: 'editor', label: 'Editor PDF' },
 ] as const;
@@ -97,6 +100,7 @@ export default function AdminPage() {
         {tab === 'usuarios' && <UsersPanel />}
         {tab === 'comprobantes' && <ComprobantesPanel />}
         {tab === 'liquidacion' && <LiquidacionPanel />}
+        {tab === 'renta-anual' && <RentaAnualPanel />}
         {tab === 'recursos' && <ResourcesPanel />}
         {tab === 'editor' && <PDFEditor />}
       </div>

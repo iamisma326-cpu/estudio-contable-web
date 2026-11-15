@@ -37,6 +37,7 @@ import clientes from './_rutas/clientes.js';
 import ple from './_rutas/ple.js';
 import liquidacion from './_rutas/liquidacion.js';
 import libro from './_rutas/libro.js';
+import rentaEjercicio from './_rutas/renta-ejercicio.js';
 
 /** Handler con la firma que ya usan todos los archivos de api/_rutas/. */
 type Handler = (req: ReqLike, res: ResLike) => Promise<void>;
@@ -64,6 +65,9 @@ const RUTAS: Record<string, Handler> = {
   ple,
   liquidacion,
   libro,
+  // 'renta-anual' ya sirve el cronograma de SUNAT; este calcula el impuesto
+  // del ejercicio desde los comprobantes y lo que aporta el contador.
+  'renta-ejercicio': rentaEjercicio,
 };
 
 /**

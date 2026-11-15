@@ -16,7 +16,7 @@
     "test:ingesta": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-ingesta.ts",
     "test:persistencia": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-persistencia.ts",
     "test:api": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-comprobantes.ts",
-    "test": "npm run test:comprobante && npm run test:asientos && npm run test:xml && npm run test:moneda && npm run test:ingesta && npm run test:pdf && npm run test:ple && npm run test:igv && npm run test:excel && npm run test:fechas && npm run test:ple-validador && npm run test:ple-carpeta",
+    "test": "npm run test:comprobante && npm run test:asientos && npm run test:xml && npm run test:moneda && npm run test:ingesta && npm run test:pdf && npm run test:ple && npm run test:igv && npm run test:excel && npm run test:fechas && npm run test:ple-validador && npm run test:ple-carpeta && npm run test:renta-anual",
     "db:migrate": "node --env-file=.env scripts/db-migrate.mjs",
     "db:seed-admin": "node --env-file=.env scripts/seed-admin.mjs",
     "test:clientes": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-clientes.ts",
@@ -30,7 +30,9 @@
     "test:fechas": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-fechas-ui.ts",
     "test:ple-validador": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-ple-validador.ts",
     "ple:desde": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/ple-desde-carpeta.ts",
-    "test:ple-carpeta": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-ple-carpeta.ts"
+    "test:ple-carpeta": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-ple-carpeta.ts",
+    "test:renta-anual": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-renta-anual.ts",
+    "test:renta-ejercicio": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-renta-ejercicio.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",

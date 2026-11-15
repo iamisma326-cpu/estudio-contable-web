@@ -135,6 +135,13 @@ ALTER TABLE public.periodos
 ALTER TABLE public.periodos
   ADD COLUMN IF NOT EXISTS igv_resultado numeric(12,2);
 
+-- Datos de la declaración anual que no se deducen de los comprobantes: gastos
+-- deducibles aceptados, pagos a cuenta, pérdidas de años anteriores. Se guardan
+-- por año en un jsonb ({ "2026": { ... } }) para no crear una tabla por cada
+-- dato que pida el formulario 710.
+ALTER TABLE public.clientes
+  ADD COLUMN IF NOT EXISTS datos_anuales jsonb NOT NULL DEFAULT '{}'::jsonb;
+
 -- El saldo a favor nunca es negativo: si lo fuera, es a pagar.
 ALTER TABLE public.periodos
   DROP CONSTRAINT IF EXISTS periodos_saldo_favor_positivo;
