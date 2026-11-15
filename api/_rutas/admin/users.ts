@@ -4,12 +4,18 @@
  * GET /api/admin/users?q=&role=&status=&page=1&limit=20
  *   Lista paginada con perfil. `status` = active | suspended.
  *
- * PATCH /api/admin/users  { id, action }
- *   action: 'promote'  → role = 'admin'
- *           'demote'   → role = 'user'
+ * PATCH /api/admin/users  { id, action, role? }
+ *   action: 'set_role' → role = 'admin' | 'asistente' | 'user'
+ *           'promote'  → role = 'admin'   (compatibilidad)
+ *           'demote'   → role = 'user'    (compatibilidad)
  *           'suspend'  → banned = true (Better Auth y nuestros Guards lo respetan)
  *           'activate' → banned = false
  *           'delete'   → borra cuenta, sesiones y perfil
+ *
+ * Tres roles: 'admin' (todo, incluida esta pantalla), 'asistente' (herramientas
+ * del estudio: comprobantes, libros — NO gestiona cuentas) y 'user' (cliente del
+ * estudio: solo su panel). El claim `role` del JWT no autoriza nada: la fuente de
+ * verdad es esta fila (ver _auth/guard.ts).
  *
  * Protecciones: el admin no puede degradarse, suspenderse ni borrarse a sí
  * mismo (dejaría el panel sin acceso).
@@ -32,7 +38,10 @@ interface UserListRow {
   telefono: string | null;
 }
 
-const ACTIONS = new Set(['promote', 'demote', 'suspend', 'activate', 'delete']);
+const ACTIONS = new Set(['set_role', 'promote', 'demote', 'suspend', 'activate', 'delete']);
+
+/** Roles asignables desde el panel. Cualquier otro valor se rechaza (400). */
+const ROLES = new Set(['admin', 'asistente', 'user']);
 
 export default async function handler(req: ReqLike, res: ResLike): Promise<void> {
   applyCors(req, res, 'GET, PATCH');
@@ -88,15 +97,24 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
   }
 
   if (req.method === 'PATCH') {
-    const body = (await readJsonBody(req)) as { id?: unknown; action?: unknown } | null;
+    const body = (await readJsonBody(req)) as { id?: unknown; action?: unknown; role?: unknown } | null;
     const id = typeof body?.id === 'string' ? body.id : '';
     const action = typeof body?.action === 'string' ? body.action : '';
+    const role = typeof body?.role === 'string' ? body.role : '';
 
     if (!/^[0-9a-f-]{36}$/i.test(id) || !ACTIONS.has(action)) {
       res.status(400).json({ ok: false, error: 'invalid_request' });
       return;
     }
-    if (id === admin.id && action !== 'promote') {
+    if (action === 'set_role' && !ROLES.has(role)) {
+      res.status(400).json({ ok: false, error: 'invalid_role' });
+      return;
+    }
+    // Auto-protección: un admin no puede quitarse a sí mismo el rol de admin
+    // (dejaría el panel sin administración). Cambiar de admin a admin sí vale.
+    const seQuitaAdmin =
+      (action === 'set_role' && role !== 'admin') || action === 'demote';
+    if (id === admin.id && (seQuitaAdmin || (action !== 'promote' && action !== 'set_role'))) {
       res.status(400).json({ ok: false, error: 'cannot_modify_self' });
       return;
     }
@@ -111,6 +129,12 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     }
 
     switch (action) {
+      case 'set_role':
+        await query(
+          `UPDATE neon_auth."user" SET role = $2, "updatedAt" = now() WHERE id = $1`,
+          [id, role]
+        );
+        break;
       case 'promote':
       case 'demote':
         await query(

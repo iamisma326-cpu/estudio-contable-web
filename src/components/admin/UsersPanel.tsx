@@ -22,6 +22,18 @@ const ACTION_LABELS: Record<string, string> = {
   delete: 'Eliminar',
 };
 
+/**
+ * Etiqueta del rol. Tres valores desde que existe el asistente contable:
+ * admin (todo), asistente (herramientas del estudio) y usuario (cliente).
+ * Un valor raro en la BD se muestra tal cual en vez de mentir con "Usuario".
+ */
+function roleLabel(role: string): string {
+  if (role === 'admin') return 'Admin';
+  if (role === 'asistente') return 'Asistente';
+  if (role === 'user') return 'Usuario';
+  return role;
+}
+
 export default function UsersPanel() {
   const [query, setQuery] = useState('');
   const [role, setRole] = useState('');
@@ -58,7 +70,7 @@ export default function UsersPanel() {
     return () => window.clearTimeout(timer);
   }, [load, query]);
 
-  async function runAction(user: AdminUser, action: string) {
+  async function runAction(user: AdminUser, action: string, newRole?: string) {
     if (action === 'delete') {
       const ok = window.confirm(
         `¿Eliminar definitivamente a ${user.email}? Se borran su cuenta, sesiones y perfil.`
@@ -70,12 +82,14 @@ export default function UsersPanel() {
     const res = await apiSend<{ ok: boolean; error?: string }>('/api/admin/users', 'PATCH', {
       id: user.id,
       action,
+      ...(newRole ? { role: newRole } : {}),
     });
     if (!res.ok) {
       const messages: Record<string, string> = {
-        cannot_modify_self: 'No puedes aplicar esa acción sobre tu propia cuenta.',
+        cannot_modify_self: 'No puedes quitarte a ti mismo el rol de admin.',
         not_found: 'El usuario ya no existe.',
         forbidden: 'Tu sesión no tiene permisos de administración.',
+        invalid_role: 'Ese rol no es válido.',
       };
       setError(messages[res.data?.error ?? ''] ?? 'No se pudo completar la acción.');
     }
@@ -108,6 +122,7 @@ export default function UsersPanel() {
         >
           <option value="">Todos los roles</option>
           <option value="user">Usuarios</option>
+          <option value="asistente">Asistentes</option>
           <option value="admin">Administradores</option>
         </select>
         <select
@@ -156,8 +171,8 @@ export default function UsersPanel() {
                 </td>
                 <td>{user.empresa || '—'}</td>
                 <td>
-                  <span className={user.role === 'admin' ? styles.badge : styles.badgeNeutral + ' ' + styles.badge}>
-                    {user.role === 'admin' ? 'Admin' : 'Usuario'}
+                  <span className={user.role === 'user' ? styles.badgeNeutral + ' ' + styles.badge : styles.badge}>
+                    {roleLabel(user.role)}
                   </span>
                 </td>
                 <td>
@@ -169,25 +184,25 @@ export default function UsersPanel() {
                 <td>{formatDate(user.last_session_at)}</td>
                 <td>
                   <div className={styles.rowActions}>
-                    {user.role === 'admin' ? (
-                      <button
-                        type="button"
-                        className={styles.miniBtn}
-                        disabled={busyId === user.id}
-                        onClick={() => runAction(user, 'demote')}
-                      >
-                        {ACTION_LABELS.demote}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className={styles.miniBtn}
-                        disabled={busyId === user.id}
-                        onClick={() => runAction(user, 'promote')}
-                      >
-                        {ACTION_LABELS.promote}
-                      </button>
-                    )}
+                    {/*
+                     * Un solo selector para los tres roles. Sustituye a los
+                     * botones Promover/Degradar, que solo cubrían admin y user.
+                     */}
+                    <select
+                      className={styles.select}
+                      value={user.role}
+                      disabled={busyId === user.id}
+                      aria-label={`Rol de ${user.email}`}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        if (next === user.role) return;
+                        void runAction(user, 'set_role', next);
+                      }}
+                    >
+                      <option value="user">Usuario</option>
+                      <option value="asistente">Asistente</option>
+                      <option value="admin">Admin</option>
+                    </select>
                     {user.banned ? (
                       <button
                         type="button"
