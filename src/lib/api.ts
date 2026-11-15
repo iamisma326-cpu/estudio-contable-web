@@ -119,3 +119,28 @@ export function apiSend<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', bo
     true
   );
 }
+
+/**
+ * Descarga un archivo de la API.
+ *
+ * No se puede usar `<a href="/api/...">` porque el token va en la cabecera
+ * Authorization y el navegador no lo añade en una navegación normal. Se pide
+ * con fetch y se arma el blob aquí.
+ *
+ * Devuelve el nombre sugerido por el servidor (Content-Disposition) para no
+ * inventarlo en el cliente: la nomenclatura del PLE la fija SUNAT.
+ */
+export async function apiDescargar(
+  path: string
+): Promise<{ ok: boolean; status: number; blob: Blob | null; nombre: string | null }> {
+  const token = await getAuthToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const res = await fetch(path, { headers });
+  if (!res.ok) return { ok: false, status: res.status, blob: null, nombre: null };
+
+  const cd = res.headers.get('Content-Disposition') ?? '';
+  const m = /filename="([^"]+)"/.exec(cd);
+  return { ok: true, status: res.status, blob: await res.blob(), nombre: m?.[1] ?? null };
+}

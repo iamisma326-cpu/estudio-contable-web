@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiGet, apiSend } from '../../lib/api';
+import { apiDescargar, apiGet, apiSend } from '../../lib/api';
 import styles from '../../styles/AdminPage.module.css';
 
 // --- Tipos que devuelve /api/comprobantes -----------------------------------
@@ -139,6 +139,23 @@ async function prepararCuerpo(file: File): Promise<{ xml?: string; pdfBase64?: s
 
 // --- Componente --------------------------------------------------------------
 
+/** Respuesta del endpoint /api/ple cuando solo se consulta el resumen. */
+interface ResumenPLE {
+  ok: boolean;
+  formato: '14.1' | '8.1';
+  periodo: string;
+  periodoEstado: string;
+  totales: { base: number; igv: number; exonerado: number; inafecto: number; total: number; registros: number };
+  nombreArchivo: string;
+  avisos: string[];
+}
+
+/** Los dos libros que se presentan ante SUNAT. */
+const LIBROS = [
+  { formato: '14.1' as const, titulo: 'Ventas', detalle: 'Registro de Ventas e Ingresos' },
+  { formato: '8.1' as const, titulo: 'Compras', detalle: 'Registro de Compras' },
+];
+
 export default function ComprobantesPanel() {
   // Clientes: un comprobante pertenece siempre a un contribuyente.
   const [clientes, setClientes] = useState<Array<{ id: string; ruc: string; razon_social: string }>>([]);
@@ -156,6 +173,9 @@ export default function ComprobantesPanel() {
   const [cargando, setCargando] = useState(false);
   const [errorLista, setErrorLista] = useState<string | null>(null);
   const [ocupadoId, setOcupadoId] = useState<string | null>(null);
+  const [resumenPLE, setResumenPLE] = useState<Record<string, ResumenPLE | null>>({});
+  const [descargando, setDescargando] = useState<string | null>(null);
+  const [errorPLE, setErrorPLE] = useState<string | null>(null);
 
   const cargarClientes = useCallback(async () => {
     const r = await apiGet<{ clientes: Array<{ id: string; ruc: string; razon_social: string }> }>(
@@ -209,6 +229,63 @@ export default function ComprobantesPanel() {
   useEffect(() => {
     void cargarLista();
   }, [cargarLista]);
+
+  /**
+   * Resumen de lo que se presentaría a SUNAT, sin descargar nada.
+   *
+   * Se pide junto con la lista porque el asistente necesita ver el total antes
+   * de bajarse el libro: es el mismo criterio que la bandeja, que muestra la
+   * lectura antes de guardar.
+   */
+  const cargarResumenPLE = useCallback(async () => {
+    if (!clienteId || !periodo) {
+      setResumenPLE({});
+      return;
+    }
+    const r = await apiGet<ResumenPLE>(
+      `/api/ple?clienteId=${encodeURIComponent(clienteId)}&periodo=${encodeURIComponent(periodo)}&formato=8.1`
+    );
+    const v = await apiGet<ResumenPLE>(
+      `/api/ple?clienteId=${encodeURIComponent(clienteId)}&periodo=${encodeURIComponent(periodo)}&formato=14.1`
+    );
+    const nuevo: Record<string, ResumenPLE | null> = {};
+    if (r.ok && r.data) nuevo['8.1'] = r.data;
+    if (v.ok && v.data) nuevo['14.1'] = v.data;
+    setResumenPLE(nuevo);
+  }, [clienteId, periodo]);
+
+  useEffect(() => {
+    void cargarResumenPLE();
+  }, [cargarResumenPLE]);
+
+  /** Descarga el libro. El nombre lo pone el servidor: lo fija SUNAT. */
+  async function descargarPLE(formato: '14.1' | '8.1') {
+    setDescargando(formato);
+    setErrorPLE(null);
+    try {
+      const r = await apiDescargar(
+        `/api/ple?clienteId=${encodeURIComponent(clienteId)}&periodo=${encodeURIComponent(periodo)}&formato=${formato}&descargar=1`
+      );
+      if (!r.ok || !r.blob) {
+        setErrorPLE(
+          r.status === 403
+            ? 'No tienes permiso para exportar los libros.'
+            : 'No se pudo generar el archivo. Inténtalo otra vez.'
+        );
+        return;
+      }
+      const url = URL.createObjectURL(r.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = r.nombre ?? `LE-${periodo}-${formato}.TXT`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDescargando(null);
+    }
+  }
 
   /** Paso 1: leer el archivo. No guarda nada. */
   async function leerArchivo(file: File) {
@@ -514,6 +591,69 @@ export default function ComprobantesPanel() {
             )}
           </>
         )}
+      </div>
+
+      {/* --- Exportación a PLE --- */}
+      <div className={styles.panel} style={{ marginTop: 16 }}>
+        <h3 className={styles.panelTitle}>Libros electrónicos (PLE)</h3>
+        <p className={styles.muted}>
+          Solo se exportan los comprobantes <strong>confirmados</strong>. Lo que está pendiente
+          de revisión no entra en el libro y no se presenta a SUNAT.
+        </p>
+
+        {errorPLE && <p className={styles.alert}>{errorPLE}</p>}
+
+        {!clienteId ? (
+          <p className={styles.muted} style={{ marginTop: 12 }}>
+            Elige un cliente para ver sus libros.
+          </p>
+        ) : (
+          <div className={styles.cards} style={{ marginTop: 12 }}>
+            {LIBROS.map((libro) => {
+              const r = resumenPLE[libro.formato];
+              const t = r?.totales;
+              const vacio = !t || t.registros === 0;
+              return (
+                <div key={libro.formato} className={styles.card}>
+                  <span className={styles.cardLabel}>
+                    {libro.titulo} · {libro.formato}
+                  </span>
+                  <span className={styles.cardValue}>
+                    {t ? money(t.total) : '—'}
+                  </span>
+                  <span className={styles.cardHint}>
+                    {t
+                      ? `${t.registros} doc. · Base ${money(t.base)} · IGV ${money(t.igv)}`
+                      : libro.detalle}
+                  </span>
+                  {r?.avisos && r.avisos.length > 0 && (
+                    <span className={styles.cellSub} style={{ color: 'var(--color-warning, #b45309)' }}>
+                      {r.avisos[0]}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.miniBtn}
+                    style={{ marginTop: 8 }}
+                    disabled={descargando !== null || !r}
+                    onClick={() => void descargarPLE(libro.formato)}
+                  >
+                    {descargando === libro.formato
+                      ? 'Generando…'
+                      : vacio
+                        ? 'Descargar (sin movimientos)'
+                        : 'Descargar .TXT'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <p className={styles.muted} style={{ marginTop: 12 }}>
+          El archivo se valida y se envía desde el Programa de Libros Electrónicos de SUNAT
+          con la Clave SOL del cliente. Esta exportación no presenta nada por sí sola.
+        </p>
       </div>
     </div>
   );
