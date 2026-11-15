@@ -32,6 +32,7 @@ import adminResources from './_rutas/admin/resources.js';
 import adminResourceFile from './_rutas/admin/resource-file.js';
 import pdfEdit from './_rutas/pdf-edit.js';
 import pdfRender from './_rutas/pdf-render.js';
+import comprobantes from './_rutas/comprobantes.js';
 
 /** Handler con la firma que ya usan todos los archivos de api/_rutas/. */
 type Handler = (req: ReqLike, res: ResLike) => Promise<void>;
@@ -53,6 +54,7 @@ const RUTAS: Record<string, Handler> = {
   'admin/resource-file': adminResourceFile,
   'pdf-edit': pdfEdit,
   'pdf-render': pdfRender,
+  comprobantes,
 };
 
 /**
