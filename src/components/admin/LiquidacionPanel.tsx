@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { apiGet } from '../../lib/api';
+import { apiDescargar, apiGet } from '../../lib/api';
 import styles from '../../styles/AdminPage.module.css';
 
 interface Concepto {
@@ -61,6 +61,8 @@ export default function LiquidacionPanel() {
   const [datos, setDatos] = useState<RespuestaLiquidacion | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [descargando, setDescargando] = useState(false);
+  const [errorExcel, setErrorExcel] = useState<string | null>(null);
 
   const cargarClientes = useCallback(async () => {
     const r = await apiGet<{ clientes: Array<{ id: string; ruc: string; razon_social: string }> }>('/api/clientes');
@@ -92,6 +94,39 @@ export default function LiquidacionPanel() {
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  /**
+   * Descarga el libro del mes. El nombre lo pone el servidor.
+   *
+   * Se descarga desde esta pantalla y no desde la de comprobantes porque es
+   * aquí donde el asistente ya tiene los números a la vista: bajar el Excel
+   * desde el sitio donde se revisa el resultado evita el salto a otra pestaña.
+   */
+  async function descargarLibro() {
+    setDescargando(true);
+    setErrorExcel(null);
+    try {
+      const r = await apiDescargar(
+        `/api/libro?clienteId=${encodeURIComponent(clienteId)}&periodo=${encodeURIComponent(periodo)}&descargar=1`
+      );
+      if (!r.ok || !r.blob) {
+        setErrorExcel(
+          r.status === 403 ? 'No tienes permiso para descargar el libro.' : 'No se pudo generar el Excel.'
+        );
+        return;
+      }
+      const url = URL.createObjectURL(r.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = r.nombre ?? `libro-${periodo}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDescargando(false);
+    }
+  }
 
   const l = datos;
   const aPagar = l ? l.igv.igvAPagar + l.renta.monto : 0;
@@ -148,6 +183,21 @@ export default function LiquidacionPanel() {
                 <span className={styles.cardHint}>{REGIMEN_NOMBRE[l.cliente.regimen] ?? l.cliente.regimen}</span>
               </div>
             </div>
+
+            {errorExcel && <p className={styles.alert}>{errorExcel}</p>}
+            <button
+              type="button"
+              className={styles.miniBtn}
+              style={{ marginTop: 12 }}
+              disabled={descargando}
+              onClick={() => void descargarLibro()}
+            >
+              {descargando ? 'Generando…' : 'Descargar Excel del mes'}
+            </button>
+            <p className={styles.muted} style={{ marginTop: 8 }}>
+              Cinco hojas: Ventas, Compras, Diario, Resumen y Pendientes (las facturas que no
+              entraron al libro).
+            </p>
           </div>
 
           {/* La resta completa, para poder revisarla. */}
