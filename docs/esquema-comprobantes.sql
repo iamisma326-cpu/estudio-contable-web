@@ -1,9 +1,9 @@
 -- ============================================================
 -- Dominio contable — opción A (herramienta interna del estudio).
 --
--- NO ejecutar todavía: es una propuesta para revisar antes de
--- tocar db/schema.sql. Cuando se apruebe, estas sentencias se
--- llevan a db/schema.sql (idempotentes, igual que el resto).
+-- Idempotente: se puede aplicar varias veces sin efectos secundarios
+-- (CREATE TABLE/INDEX IF NOT EXISTS). Ya está incorporado a db/schema.sql
+-- y se aplica con `npm run db:migrate`.
 --
 -- Principio: nada entra al libro sin estar confirmado. Por eso el
 -- comprobante tiene estado y el asiento es hijo de un comprobante
@@ -137,8 +137,10 @@ CREATE TABLE IF NOT EXISTS public.asiento_lineas (
   cuenta_nombre text     NOT NULL,
   debe       numeric(12,2) NOT NULL DEFAULT 0,
   haber      numeric(12,2) NOT NULL DEFAULT 0,
-  -- Una línea no puede debitar y acreditar a la vez.
-  CHECK (debe = 0 OR haber = 0)
+  -- Una línea no puede debitar y acreditar a la vez, ni ser un renglón vacío.
+  CHECK ((debe = 0 OR haber = 0) AND (debe <> 0 OR haber <> 0)),
+  -- Los importes negativos se representan cambiando de lado, no con signo.
+  CHECK (debe >= 0 AND haber >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS asiento_lineas_asiento_idx
