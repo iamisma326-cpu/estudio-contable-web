@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
+    "test:comprobante": "node --experimental-strip-types scripts/test-comprobante.ts",
     "db:migrate": "node --env-file=.env scripts/db-migrate.mjs",
     "db:seed-admin": "node --env-file=.env scripts/seed-admin.mjs"
   },
