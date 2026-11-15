@@ -308,23 +308,26 @@ export default function RentaAnualPanel() {
           <p className={styles.muted}>
             No salen de los comprobantes. Se guardan para el ejercicio {datos.anio}.
           </p>
-          <div className={styles.cards}>
-            {CAMPOS.map((c) => (
-              <label key={c.key} className={styles.input}>
-                <span>{c.label}</span>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={borrador[c.key] ?? ''}
-                  placeholder="0.00"
-                  onChange={(e) => setBorrador((b) => ({ ...b, [c.key]: e.target.value }))}
-                />
-                <small className={styles.muted}>{c.ayuda}</small>
-              </label>
-            ))}
+          <div className={styles.form}>
+            <div className={styles.formRow} style={{ alignItems: 'end' }}>
+              {CAMPOS.map((c) => (
+                <label key={c.key} className={styles.fileField} style={{ height: '100%', justifyContent: 'flex-end' }}>
+                  <span className={styles.fileLabel}>{c.label}</span>
+                  <input
+                    className={styles.input}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={borrador[c.key] ?? ''}
+                    placeholder="0.00"
+                    onChange={(e) => setBorrador((b) => ({ ...b, [c.key]: e.target.value }))}
+                  />
+                  <small className={styles.muted}>{c.ayuda}</small>
+                </label>
+              ))}
+            </div>
           </div>
-          <div className={styles.toolbar}>
+          <div className={styles.formActions}>
             <button type="button" onClick={() => void guardar()} disabled={guardando}>
               {guardando ? 'Guardando…' : 'Guardar y recalcular'}
             </button>
