@@ -6,6 +6,7 @@ import DarkBackground from '../components/DarkBackground';
  *   Resumen   métricas de usuarios, altas, recursos y actividad
  *   Usuarios  búsqueda, filtros, rol, suspensión y baja
  *   Comprobantes  bandeja de facturas: subir, revisar y confirmar
+ *   Liquidación   IGV del mes y pago a cuenta de renta
  *   Recursos  catálogo del área privada
  *   Editor    herramienta de edición asistida de PDF (PDFEditor)
  *
@@ -22,12 +23,14 @@ import StatsPanel from '../components/admin/StatsPanel';
 import UsersPanel from '../components/admin/UsersPanel';
 import ResourcesPanel from '../components/admin/ResourcesPanel';
 import ComprobantesPanel from '../components/admin/ComprobantesPanel';
+import LiquidacionPanel from '../components/admin/LiquidacionPanel';
 import styles from '../styles/AdminPage.module.css';
 
 const TABS = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'usuarios', label: 'Usuarios' },
   { id: 'comprobantes', label: 'Comprobantes' },
+  { id: 'liquidacion', label: 'Liquidación' },
   { id: 'recursos', label: 'Recursos' },
   { id: 'editor', label: 'Editor PDF' },
 ] as const;
@@ -93,6 +96,7 @@ export default function AdminPage() {
         {tab === 'resumen' && <StatsPanel />}
         {tab === 'usuarios' && <UsersPanel />}
         {tab === 'comprobantes' && <ComprobantesPanel />}
+        {tab === 'liquidacion' && <LiquidacionPanel />}
         {tab === 'recursos' && <ResourcesPanel />}
         {tab === 'editor' && <PDFEditor />}
       </div>

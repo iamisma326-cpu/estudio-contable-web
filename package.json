@@ -16,13 +16,15 @@
     "test:ingesta": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-ingesta.ts",
     "test:persistencia": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-persistencia.ts",
     "test:api": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-comprobantes.ts",
-    "test": "npm run test:comprobante && npm run test:asientos && npm run test:xml && npm run test:moneda && npm run test:ingesta && npm run test:pdf && npm run test:ple",
+    "test": "npm run test:comprobante && npm run test:asientos && npm run test:xml && npm run test:moneda && npm run test:ingesta && npm run test:pdf && npm run test:ple && npm run test:igv",
     "db:migrate": "node --env-file=.env scripts/db-migrate.mjs",
     "db:seed-admin": "node --env-file=.env scripts/seed-admin.mjs",
     "test:clientes": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-clientes.ts",
     "test:pdf": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-pdf.ts",
     "test:ple": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-ple.ts",
-    "test:ple-api": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-ple.ts"
+    "test:ple-api": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-ple.ts",
+    "test:igv": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-igv.ts",
+    "test:liquidacion": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-liquidacion.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",

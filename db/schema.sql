@@ -113,8 +113,35 @@ CREATE TABLE IF NOT EXISTS public.periodos (
   -- 'abierto' → 'cerrado'. Cerrado = no se aceptan más confirmaciones.
   estado     text        NOT NULL DEFAULT 'abierto',
   created_at timestamptz NOT NULL DEFAULT now(),
+  -- Saldo a favor del IGV al cierre. Se guarda y no se recalcula: es el
+  -- resultado de la declaración presentada (FD 0621) y no se puede reescribir.
+  -- NULL = período sin cerrar, y NULL no es 0.
+  saldo_a_favor_igv numeric(12,2)
+    CONSTRAINT periodos_saldo_favor_positivo CHECK (saldo_a_favor_igv IS NULL OR saldo_a_favor_igv >= 0),
+  -- Resultado del IGV del período tal como se declaró (positivo = a pagar).
+  igv_resultado     numeric(12,2),
   UNIQUE (cliente_id, anio, mes)
 );
+
+-- Columnas añadidas después de crear la tabla.
+--
+-- CREATE TABLE IF NOT EXISTS no toca una tabla que ya existe, así que una
+-- columna nueva necesita su propio ALTER para llegar a la base que ya está en
+-- producción. Se dejan aquí, junto a la tabla, para que una base nueva y la
+-- existente terminen igual.
+ALTER TABLE public.periodos
+  ADD COLUMN IF NOT EXISTS saldo_a_favor_igv numeric(12,2);
+
+ALTER TABLE public.periodos
+  ADD COLUMN IF NOT EXISTS igv_resultado numeric(12,2);
+
+-- El saldo a favor nunca es negativo: si lo fuera, es a pagar.
+ALTER TABLE public.periodos
+  DROP CONSTRAINT IF EXISTS periodos_saldo_favor_positivo;
+
+ALTER TABLE public.periodos
+  ADD CONSTRAINT periodos_saldo_favor_positivo
+  CHECK (saldo_a_favor_igv IS NULL OR saldo_a_favor_igv >= 0);
 
 -- ------------------------------------------------------------
 -- Comprobantes: el núcleo.

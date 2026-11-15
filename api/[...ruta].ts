@@ -35,6 +35,7 @@ import pdfRender from './_rutas/pdf-render.js';
 import comprobantes from './_rutas/comprobantes.js';
 import clientes from './_rutas/clientes.js';
 import ple from './_rutas/ple.js';
+import liquidacion from './_rutas/liquidacion.js';
 
 /** Handler con la firma que ya usan todos los archivos de api/_rutas/. */
 type Handler = (req: ReqLike, res: ResLike) => Promise<void>;
@@ -60,6 +61,7 @@ const RUTAS: Record<string, Handler> = {
   clientes,
   periodos: clientes,
   ple,
+  liquidacion,
 };
 
 /**
