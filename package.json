@@ -12,7 +12,8 @@
     "test:comprobante": "node --experimental-strip-types scripts/test-comprobante.ts",
     "test:asientos": "node --experimental-strip-types scripts/test-asientos.ts",
     "test:xml": "node --experimental-strip-types scripts/test-xml.ts",
-    "test": "npm run test:comprobante && npm run test:asientos && npm run test:xml",
+    "test:moneda": "node --experimental-strip-types scripts/test-moneda.ts",
+    "test": "npm run test:comprobante && npm run test:asientos && npm run test:xml && npm run test:moneda",
     "db:migrate": "node --env-file=.env scripts/db-migrate.mjs",
     "db:seed-admin": "node --env-file=.env scripts/seed-admin.mjs"
   },
