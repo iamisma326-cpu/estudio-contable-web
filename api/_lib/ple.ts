@@ -340,12 +340,14 @@ export function generarPLE(
       );
       continue;
     }
+    // Una compra en el registro de ventas (o al revés) NO es un problema: es lo
+    // normal, cada libro lleva su lado. Solo se avisa si tras filtrar el libro
+    // queda vacío, porque entonces el .txt se presenta "sin información" y eso
+    // sí hay que saberlo antes de mandarlo a SUNAT.
     if (formato === '14.1' && c.operacion !== 'venta') {
-      problemas.push(`${c.serie ?? '?'}-${c.numero ?? '?'} es una compra: no va en el registro de ventas.`);
       continue;
     }
     if (formato === '8.1' && c.operacion !== 'compra') {
-      problemas.push(`${c.serie ?? '?'}-${c.numero ?? '?'} es una venta: no va en el registro de compras.`);
       continue;
     }
     if (!c.serie || !c.numero) {
@@ -360,6 +362,18 @@ export function generarPLE(
   }
 
   incluir.sort(ordenar);
+
+  const lado = formato === '14.1' ? 'venta' : 'compra';
+  const nombreLibro = formato === '14.1' ? 'Registro de Ventas' : 'Registro de Compras';
+  const delOtroLado = comprobantes.filter(
+    (c) => c.estado === 'confirmado' && c.operacion !== lado
+  ).length;
+  if (incluir.length === 0 && delOtroLado > 0) {
+    problemas.push(
+      `No hay comprobantes de ${lado} confirmados. Los ${delOtroLado} confirmados del período son del otro lado ` +
+        `y no pertenecen al ${nombreLibro}: el archivo se generará vacío.`
+    );
+  }
 
   const lineas =
     formato === '14.1'

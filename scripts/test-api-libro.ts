@@ -229,6 +229,59 @@ try {
     check('el resumen lleva el IGV a pagar', resumen.includes('IGV a pagar'));
   }
 
+  console.log('\n--- El saldo a favor del mes anterior entra ---');
+  {
+    // Octubre declara S/ 50 a favor; noviembre debe restarlos. Sin esto el
+    // Excel y la pantalla de liquidación daban cifras distintas.
+    // El período de octubre tiene que EXISTIR antes de fijarle el saldo: un
+    // UPDATE sobre una fila que no está no hace nada y el test mentiría.
+    await query(
+      `INSERT INTO public.periodos (cliente_id, anio, mes, saldo_a_favor_igv)
+       VALUES ($1, 2026, 10, 50) ON CONFLICT (cliente_id, anio, mes)
+       DO UPDATE SET saldo_a_favor_igv = 50`,
+      [clienteId]
+    );
+    const chk = await query<{ s: string | null }>(
+      `SELECT saldo_a_favor_igv::text AS s FROM public.periodos
+        WHERE cliente_id = $1 AND anio = 2026 AND mes = 10`,
+      [clienteId]
+    );
+    check('el saldo quedó guardado', chk[0]?.s === '50.00', String(chk[0]?.s));
+
+    const { out: outLiq, res: resLiq } = fakeRig();
+    await handler(req('GET', tokenAsistente, 'libro', { clienteId, periodo: '2026-11' }), resLiq as never);
+    const libro = outLiq.body as any;
+    // IGV ventas 180 - crédito 108 = 72. Con el saldo de 50: 72 - 50 = 22.
+    // Lo que se prueba es que el 50 se resta, no el valor concreto.
+    check('el libro resta el saldo a favor', libro.igvAPagar === 22, String(libro.igvAPagar));
+
+    const { out: outXl, res: resXl } = fakeRig();
+    await handler(req('GET', tokenAsistente, 'libro', { clienteId, periodo: '2026-11', descargar: '1' }), resXl as never);
+    const resumen = leerEntrada(outXl.bin as Buffer, 'xl/worksheets/sheet4.xml') ?? '';
+    check('el Excel lleva el saldo a favor', resumen.includes('-50') || resumen.includes('>50<'),
+      'no aparece el saldo');
+    check('el Excel llega al mismo resultado que el resumen',
+      resumen.includes('22'), 'falta el 22 del resultado');
+  }
+
+  console.log('\n--- Excel y pantalla no pueden discrepar ---');
+  {
+    // Se piden las dos vistas del mismo mes y se comparan. Fue un bug real:
+    // /api/libro pasaba saldo 0 y la pantalla restaba el saldo a favor, así que
+    // el mismo mes daba dos cifras distintas según dónde se mirara.
+    const { default: liqHandler } = await import('../api/_rutas/liquidacion.ts');
+    const { out: outLiq, res: resLiq } = fakeRig();
+    await liqHandler(req('GET', tokenAsistente, 'liquidacion', { clienteId, periodo: '2026-11' }), resLiq as never);
+    const { out: outLibro, res: resLibro } = fakeRig();
+    await handler(req('GET', tokenAsistente, 'libro', { clienteId, periodo: '2026-11' }), resLibro as never);
+
+    // El IGV viene anidado bajo 'igv' en la liquidación.
+    const a = (outLiq.body as any)?.igv?.igvAPagar;
+    const b = (outLibro.body as any)?.igvAPagar;
+    check('la liquidación responde', outLiq.status === 200, String(outLiq.status));
+    check('ambos endpoints dan el mismo IGV', a === b, `liquidación=${a} libro=${b}`);
+  }
+
   console.log('\n--- Período sin comprobantes ---');
   {
     const { out, res } = fakeRig();

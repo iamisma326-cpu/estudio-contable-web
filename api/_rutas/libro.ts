@@ -22,6 +22,7 @@ import { liquidarIGV, pagoACuenta, ingresosNetosDeVentas, type ComprobanteTribut
 import { generarAsiento } from '../_lib/asientos.js';
 import type { ComprobanteIngerido } from '../_lib/ingesta.js';
 import { REGIMENES } from '../../src/data/regimenes.js';
+import { saldoAnterior } from '../_lib/saldo-anterior.js';
 
 /** Fila de la base a ComprobanteIngerido. */
 function aComprobante(f: Record<string, unknown>): ComprobanteIngerido {
@@ -140,10 +141,14 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     serie: c.serie,
     numero: c.numero,
   }));
+  // El saldo a favor del mes anterior se consulta igual que en la pantalla de
+  // liquidación. Pasar 0 aquí hacía que el Excel y la pantalla dieran cifras
+  // distintas para el mismo mes.
+  const previo = await saldoAnterior(clienteId, anio, mes);
   const igv = liquidarIGV(
     tributarios.filter((c) => c.operacion === 'venta'),
     tributarios.filter((c) => c.operacion === 'compra'),
-    0
+    previo.saldo
   );
   const renta = pagoACuenta(ingresosNetosDeVentas(igv.ventas), { tasa: tasaPagoACuenta(cliente.regimen) });
 

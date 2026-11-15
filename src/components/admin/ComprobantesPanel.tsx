@@ -88,7 +88,19 @@ function money(v: string | number | null | undefined): string {
 
 function fecha(v: string | null): string {
   if (!v) return '—';
-  return new Date(v + 'T00:00:00').toLocaleDateString('es-PE', {
+  // La API devuelve el date de Postgres serializado como fecha-hora ISO
+  // ('2026-11-03T05:00:00.000Z'), no como '2026-11-03'. Se toma solo la parte
+  // de la fecha: concatenar 'T00:00:00' a una cadena que ya trae hora produce
+  // Invalid Date, y usar la hora tal cual corre el día por la zona horaria.
+  const soloFecha = String(v).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(soloFecha)) return '—';
+  // Se arma en horario local a partir de las partes, sin pasar por UTC.
+  const [anio, mes, dia] = soloFecha.split('-').map(Number);
+  // El regex acepta 2026-13-45, que Date convertiría en otro mes sin avisar.
+  // Se comprueba que la fecha construida sea la misma que se leyó.
+  const d = new Date(anio, mes - 1, dia);
+  if (d.getFullYear() !== anio || d.getMonth() !== mes - 1 || d.getDate() !== dia) return '—';
+  return d.toLocaleDateString('es-PE', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

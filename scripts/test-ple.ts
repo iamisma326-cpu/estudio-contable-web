@@ -195,12 +195,33 @@ console.log('\n--- Solo entran confirmados ---');
 // ---------------------------------------------------------------------------
 console.log('\n--- Ventas y compras no se mezclan ---');
 {
-  const ventas = generarPLE([comp({ operacion: 'venta' })], '8.1', { periodo: '2026-11' });
-  eq('venta no entra en compras', ventas.lineas.length, 0);
-  check('lo explica', ventas.problemas.some((p) => /compra/.test(p)), ventas.problemas.join(' | '));
+  // Mezcla normal: un período con ventas y compras, exportando un solo libro.
+  // Tener documentos del otro lado NO es un problema: es lo esperado.
+  const mixto = [
+    comp({ operacion: 'venta', numero: '1' }),
+    comp({ operacion: 'venta', numero: '2' }),
+    comp({ operacion: 'compra', numero: '3' }),
+  ];
+  const ventas = generarPLE(mixto, '14.1', { periodo: '2026-11' });
+  eq('las 2 ventas entran al registro de ventas', ventas.lineas.length, 2);
+  eq('la compra no entra', ventas.lineas.filter((l) => l.origen.numero === '3').length, 0);
+  check('no avisa por la compra: es lo normal',
+    ventas.problemas.length === 0, ventas.problemas.join(' | '));
 
-  const compras = generarPLE([comp({ operacion: 'compra' })], '14.1', { periodo: '2026-11' });
-  eq('compra no entra en ventas', compras.lineas.length, 0);
+  const compras = generarPLE(mixto, '8.1', { periodo: '2026-11' });
+  eq('la compra entra al registro de compras', compras.lineas.length, 1);
+  check('tampoco avisa por las ventas', compras.problemas.length === 0, compras.problemas.join(' | '));
+}
+{
+  // Todo del otro lado: el libro sale vacío y eso sí hay que decirlo.
+  const soloVentas = generarPLE([comp({ operacion: 'venta' })], '8.1', { periodo: '2026-11' });
+  eq('nada entra', soloVentas.lineas.length, 0);
+  check('avisa que el archivo irá vacío',
+    soloVentas.problemas.some((p) => /vacío/.test(p)), soloVentas.problemas.join(' | '));
+
+  const soloCompras = generarPLE([comp({ operacion: 'compra' })], '14.1', { periodo: '2026-11' });
+  eq('tampoco entra', soloCompras.lineas.length, 0);
+  check('avisa igual', soloCompras.problemas.some((p) => /vacío/.test(p)), soloCompras.problemas.join(' | '));
 }
 
 // ---------------------------------------------------------------------------
