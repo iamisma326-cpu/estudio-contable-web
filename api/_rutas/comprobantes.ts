@@ -41,16 +41,25 @@ import {
  * aquí sería garantizar que se desincronicen, así que se importa tal cual.
  */
 import { parsearXML, pareceXML } from '../_lib/xml-ubl.js';
-import { ingerirDesdeXML, resumenComprobante } from '../_lib/ingesta.js';
+import { ingerirDesdeXML, ingerirDesdePDF, resumenComprobante } from '../_lib/ingesta.js';
+import { extraerCampos } from '../_lib/pdf-factura.js';
 import { generarAsiento } from '../_lib/asientos.js';
+import { rucValido } from '../_lib/comprobante.js';
+import { extractPdfTextPerPage } from '../_pdf/text.js';
 
 /** Tope de tamaño: un comprobante UBL no pasa de decenas de KB. */
 const MAX_XML = 2 * 1024 * 1024;
+
+// El PDF viaja en base64, que ocupa un tercio más que el binario. 4 MB de
+// base64 ~ 3 MB de PDF: de sobra para una factura y por debajo del límite de
+// cuerpo de una función serverless.
+const MAX_PDF_BASE64 = 4 * 1024 * 1024;
 
 interface BodyLeer {
   clienteId?: string;
   xml?: string;
   periodo?: string;
+  pdfBase64?: string;
   rucPropio?: string;
   guardar?: boolean;
   guardarAsiento?: boolean;
@@ -114,23 +123,55 @@ async function leer(req: ReqLike, res: ResLike, userId: string): Promise<void> {
     return;
   }
 
-  const { clienteId, xml } = body;
+  const { clienteId, xml, pdfBase64 } = body;
   if (!clienteId || typeof clienteId !== 'string') {
     res.status(400).json({ error: 'Falta clienteId.' });
     return;
   }
-  if (!xml || typeof xml !== 'string') {
-    res.status(400).json({ error: 'Falta el XML del comprobante.' });
+
+  // Dos formas de mandar el comprobante:
+  //   xml        texto UBL, o el texto ya extraído de un PDF
+  //   pdfBase64  el PDF en crudo, que se extrae aquí
+  // El navegador no puede extraer el texto de un PDF sin cargar pdfjs en el
+  // bundle, así que el PDF viaja en base64 y se procesa en el servidor, donde
+  // pdfjs ya está para la herramienta de edición.
+  let contenido = xml;
+  if (typeof pdfBase64 === 'string' && pdfBase64.trim() !== '') {
+    if (pdfBase64.length > MAX_PDF_BASE64) {
+      res.status(413).json({ error: 'El PDF supera el tamaño máximo admitido.' });
+      return;
+    }
+    try {
+      const buffer = Buffer.from(pdfBase64, 'base64');
+      contenido = await extractPdfTextPerPage(buffer);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(400).json({ error: `No se pudo leer el PDF: ${msg}` });
+      return;
+    }
+    if (!contenido.trim()) {
+      // Un PDF escaneado no tiene capa de texto: no hay nada que leer.
+      res.status(422).json({
+        error: 'El PDF no tiene texto seleccionable (¿es un escaneo?). Hay que registrarlo a mano.',
+      });
+      return;
+    }
+  }
+
+  const xmlFinal = contenido;
+  if (!xmlFinal || typeof xmlFinal !== 'string' || xmlFinal.trim() === '') {
+    res.status(400).json({ error: 'Falta el archivo del comprobante (XML o PDF).' });
     return;
   }
-  if (xml.length > MAX_XML) {
-    res.status(413).json({ error: 'El XML supera el tamaño máximo admitido.' });
+  if (xmlFinal.length > MAX_XML) {
+    res.status(413).json({ error: 'El archivo supera el tamaño máximo admitido.' });
     return;
   }
-  if (!pareceXML(xml)) {
-    res.status(400).json({ error: 'El archivo no parece un comprobante UBL.' });
-    return;
-  }
+
+  // El mismo campo sirve para XML y para el texto ya extraído de un PDF. Se
+  // distingue por el contenido y no por el nombre del campo: así el cliente no
+  // tiene que saber qué versión del endpoint está hablando.
+  const esPDF = !pareceXML(xmlFinal);
 
   // El cliente debe existir: sin él no hay libro.
   const cliente = await queryOne<{ id: string; ruc: string; razon_social: string }>(
@@ -142,7 +183,25 @@ async function leer(req: ReqLike, res: ResLike, userId: string): Promise<void> {
     return;
   }
 
-  const leido = parsearXML(xml);
+  // --- Lectura: XML (determinista) o texto de PDF (heurístico) --------------
+  let leidoRucEmisor: string | null;
+  let leidoSerie: string | null;
+  let leidoNumero: string | null;
+  let ingeridoSinCliente;
+
+  if (esPDF) {
+    const campos = extraerCampos(xmlFinal, rucValido);
+    leidoRucEmisor = campos.rucEmisor;
+    leidoSerie = campos.serie;
+    leidoNumero = campos.numero;
+    ingeridoSinCliente = campos;
+  } else {
+    const leido = parsearXML(xmlFinal);
+    leidoRucEmisor = leido.rucEmisor;
+    leidoSerie = leido.serie;
+    leidoNumero = leido.numero;
+    ingeridoSinCliente = leido;
+  }
 
   // Se usa el RUC propio del cliente si no lo manda el cliente HTTP: es lo que
   // decide si la factura es venta o compra, y equivocarlo invierte el libro.
@@ -152,17 +211,21 @@ async function leer(req: ReqLike, res: ResLike, userId: string): Promise<void> {
   const yaExiste = await existeComprobante(
     { query, queryOne },
     clienteId,
-    leido.rucEmisor,
-    leido.serie,
-    leido.numero
+    leidoRucEmisor,
+    leidoSerie,
+    leidoNumero
   );
 
-  const ingerido = ingerirDesdeXML(leido, {
+  const opciones = {
     rucPropio,
     periodo: body.periodo ?? null,
     tipoCambio: body.tipoCambio ?? null,
     yaExiste,
-  });
+  };
+
+  const ingerido = esPDF
+    ? ingerirDesdePDF(ingeridoSinCliente as ReturnType<typeof extraerCampos>, opciones)
+    : ingerirDesdeXML(ingeridoSinCliente as ReturnType<typeof parsearXML>, opciones);
 
   // Respuesta de lectura: el asistente ve esto y decide si guardar.
   const resultado: Record<string, unknown> = {

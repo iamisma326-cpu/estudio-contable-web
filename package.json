@@ -16,10 +16,11 @@
     "test:ingesta": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-ingesta.ts",
     "test:persistencia": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-persistencia.ts",
     "test:api": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-comprobantes.ts",
-    "test": "npm run test:comprobante && npm run test:asientos && npm run test:xml && npm run test:moneda && npm run test:ingesta",
+    "test": "npm run test:comprobante && npm run test:asientos && npm run test:xml && npm run test:moneda && npm run test:ingesta && npm run test:pdf",
     "db:migrate": "node --env-file=.env scripts/db-migrate.mjs",
     "db:seed-admin": "node --env-file=.env scripts/seed-admin.mjs",
-    "test:clientes": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-clientes.ts"
+    "test:clientes": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-clientes.ts",
+    "test:pdf": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-pdf.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",

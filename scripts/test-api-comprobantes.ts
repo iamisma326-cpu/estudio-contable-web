@@ -165,8 +165,16 @@ try {
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, { body: { clienteId, xml: 'no soy xml' } }), res as never);
-    check('archivo no UBL => 400', out.status === 400);
+    await handler(req('POST', tokAsistente, { body: { clienteId, xml: 'no soy xml', guardar: true } }), res as never);
+    // Desde que el endpoint acepta PDF, un texto que no es XML se intenta leer
+    // como texto de PDF: entra a revisión en vez de rechazarse, y no se puede
+    // guardar porque faltan datos.
+    check('texto ilegible se lee como PDF y no se guarda', out.status === 422, String(out.status));
+  }
+  {
+    const { out, res } = fakeRig();
+    await handler(req('POST', tokAsistente, { body: { clienteId, xml: '   ' } }), res as never);
+    check('texto vacío => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
@@ -271,6 +279,57 @@ try {
     const { out, res } = fakeRig();
     await handler(req('PATCH', tokAsistente, { body: { id: compId, action: 'descartar' } }), res as never);
     check('no descarta uno confirmado => 409', out.status === 409, String(out.status));
+  }
+
+
+  // -------------------------------------------------------------------------
+  console.log('\n--- PDF: texto extraído ---');
+  {
+    // Se envía el texto que sale de un PDF. Se compara contra un XML en el
+    // mismo endpoint: lo que cambia es el origen y que nunca llega a 'revisado'.
+    const TEXTO_PDF = `
+PROVEEDOR SERVICIOS GENERALES S.A.C.
+RUC EMISOR: 20131312955
+FACTURA ELECTRONICA
+N° F002-77
+Fecha de Emision: 12/11/2026
+OP. GRAVADAS:   S/ 200.00
+I.G.V. (18%):   S/  36.00
+IMPORTE TOTAL:  S/ 236.00
+`;
+    const { out, res } = fakeRig();
+    await handler(req('POST', tokAsistente, { body: { clienteId, xml: TEXTO_PDF } }), res as never);
+    check('PDF => 200', out.status === 200, `${out.status} ${JSON.stringify(out.body).slice(0, 120)}`);
+    const c = (out.body as Record<string, unknown>).comprobante as Record<string, unknown>;
+    check('origen pdf_texto', c.origen === 'pdf_texto', String(c.origen));
+    check('lee serie/número', c.serie === 'F002' && c.numero === '77', `${c.serie}-${c.numero}`);
+    check('lee el total', c.total === 236, String(c.total));
+    check('nunca queda confirmado', c.estado !== 'confirmado');
+    check('no se guardó solo por leer', (out.body as Record<string, unknown>).guardado === false);
+  }
+  {
+    // Un PDF escaneado (sin capa de texto) no puede guardarse: faltan datos.
+    const { out, res } = fakeRig();
+    await handler(req('POST', tokAsistente, { body: { clienteId, xml: 'texto suelto sin nada', guardar: true } }), res as never);
+    check('PDF ilegible => 422 al guardar', out.status === 422, String(out.status));
+  }
+  {
+    // Un PDF con moneda extranjera no revienta.
+    const USD = `FACTURA ELECTRONICA
+RUC: 20131312955
+F003-9
+Fecha de Emision: 01/11/2026
+OP. GRAVADAS US$ 100.00
+I.G.V. 18%  US$ 18.00
+IMPORTE TOTAL US$ 118.00`;
+    const { out, res } = fakeRig();
+    await handler(req('POST', tokAsistente, {
+      body: { clienteId, xml: USD, tipoCambio: { fecha: '2026-11-01', compra: 3.4, venta: 3.5 } },
+    }), res as never);
+    check('PDF en USD => 200', out.status === 200, String(out.status));
+    const c = (out.body as Record<string, unknown>).comprobante as Record<string, unknown>;
+    check('convierte a soles', Number(c.total) > 300, String(c.total));
+    check('conserva la moneda original', c.moneda === 'USD');
   }
 
   // -------------------------------------------------------------------------

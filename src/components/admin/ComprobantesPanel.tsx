@@ -115,6 +115,28 @@ function estadoLabel(e: string): string {
   return map[e] ?? e;
 }
 
+/**
+ * Prepara el cuerpo del POST según el tipo de archivo.
+ *
+ * El XML se manda como texto. El PDF se manda en base64 porque el navegador no
+ * puede extraer su texto sin cargar pdfjs en el bundle; el servidor ya lo tiene
+ * para la herramienta de edición y lo procesa allí.
+ */
+async function prepararCuerpo(file: File): Promise<{ xml?: string; pdfBase64?: string }> {
+  const esPDF = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+  if (!esPDF) return { xml: await file.text() };
+
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binario = '';
+  // Por bloques: String.fromCharCode(...bytes) con un PDF grande revienta la pila.
+  const TROZO = 0x8000;
+  for (let i = 0; i < bytes.length; i += TROZO) {
+    binario += String.fromCharCode(...bytes.subarray(i, i + TROZO));
+  }
+  return { pdfBase64: btoa(binario) };
+}
+
 // --- Componente --------------------------------------------------------------
 
 export default function ComprobantesPanel() {
@@ -198,8 +220,8 @@ export default function ComprobantesPanel() {
     }
     setLeyendo(true);
     try {
-      const xml = await file.text();
-      const r = await apiSend<LecturaRespuesta>('/api/comprobantes', 'POST', { clienteId, xml, periodo });
+      const cuerpo = await prepararCuerpo(file);
+      const r = await apiSend<LecturaRespuesta>('/api/comprobantes', 'POST', { clienteId, periodo, ...cuerpo });
       if (r.data) setLectura(r.data);
       if (!r.ok) {
         setErrorLectura(r.data?.error ?? 'No se pudo leer el comprobante.');
@@ -216,11 +238,11 @@ export default function ComprobantesPanel() {
     if (!fileRef.current?.files?.[0]) return;
     setLeyendo(true);
     try {
-      const xml = await fileRef.current.files[0].text();
+      const cuerpo = await prepararCuerpo(fileRef.current.files[0]);
       const r = await apiSend<LecturaRespuesta & { comprobanteId?: string }>(
         '/api/comprobantes',
         'POST',
-        { clienteId, xml, periodo, guardar: true, guardarAsiento: true }
+        { clienteId, periodo, ...cuerpo, guardar: true, guardarAsiento: true }
       );
       if (r.ok) {
         setLectura(null);
@@ -252,7 +274,7 @@ export default function ComprobantesPanel() {
       <div className={styles.sectionHead}>
         <h2 className={styles.sectionTitle}>Comprobantes</h2>
         <p className={styles.muted}>
-          Sube el XML que envió el proveedor. Se lee y se valida antes de guardar nada.
+          Sube el XML o el PDF que envió el proveedor. Se lee y se valida antes de guardar nada.
         </p>
       </div>
 
@@ -280,13 +302,13 @@ export default function ComprobantesPanel() {
 
       {/* --- Subida y lectura --- */}
       <div className={styles.panel} style={{ marginTop: 16 }}>
-        <h3 className={styles.panelTitle}>Subir factura electrónica</h3>
+        <h3 className={styles.panelTitle}>Subir factura (XML o PDF)</h3>
         <div className={styles.formRow}>
           <input
             ref={fileRef}
             className={styles.fileInput}
             type="file"
-            accept=".xml,text/xml,application/xml"
+            accept=".xml,.pdf,text/xml,application/xml,application/pdf"
             disabled={!clienteId || leyendo}
             onChange={(e) => {
               const f = e.target.files?.[0];

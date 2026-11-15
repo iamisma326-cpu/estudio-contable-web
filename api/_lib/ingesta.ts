@@ -24,6 +24,7 @@ import {
   type Afectacion,
 } from './comprobante.js';
 import type { ComprobanteXML } from './xml-ubl.js';
+import type { CamposFacturaPDF } from './pdf-factura.js';
 import { convertirComprobante, type Moneda, type TipoCambio } from './moneda.js';
 
 export type Origen = 'xml' | 'pdf_texto' | 'vision';
@@ -193,6 +194,136 @@ export function ingerirDesdeXML(
     origen: 'xml',
     confianza: CONFIANZA.xml,
     estado,
+    hallazgos,
+    avisos,
+    clave,
+  };
+}
+
+/**
+ * Ingiere un comprobante leído del TEXTO de un PDF.
+ *
+ * Misma mecánica que ingerirDesdeXML, con dos diferencias que vienen del medio:
+ *
+ * 1. Un campo ausente NO se convierte en 0. En un XML un importe que falta es
+ *    un error de estructura; en un PDF lo normal es que la maquetación no se
+ *    haya entendido. Aquí el importe queda en 0 y se registra el hallazgo, para
+ *    que nadie confirme un comprobante cuyo total en realidad se desconoce.
+ * 2. El estado nunca pasa de 'pendiente': el texto de un PDF no es
+ *    determinista, así que siempre lo mira una persona.
+ */
+export function ingerirDesdePDF(
+  campos: CamposFacturaPDF,
+  opciones: OpcionesIngesta = {}
+): ComprobanteIngerido {
+  const avisos: string[] = [...campos.avisos];
+  const hallazgos: Hallazgo[] = [];
+
+  // Un campo que no se leyó impide validar, pero no es excusa para inventarlo:
+  // se avisa y se deja el valor en 0 para que el total cante en la revisión.
+  for (const faltante of campos.faltantes) {
+    hallazgos.push({
+      codigo: `pdf_sin_${faltante}`,
+      gravedad: 'error',
+      campo: faltante,
+      mensaje: `No se pudo leer «${faltante}» del PDF: hay que completarlo a mano.`,
+    });
+  }
+
+  // --- Operación ---
+  const rucPropio = opciones.rucPropio?.trim();
+  let operacion: 'venta' | 'compra' = 'compra';
+  if (rucPropio && campos.rucEmisor) {
+    operacion = campos.rucEmisor.trim() === rucPropio ? 'venta' : 'compra';
+  } else if (!rucPropio) {
+    avisos.push('No se indicó el RUC propio: se asumió compra. Revisar si era una venta.');
+  }
+
+  // --- Período ---
+  const periodo = opciones.periodo?.trim() || periodoDe(campos.fechaEmision);
+  if (!periodo) {
+    avisos.push('No se pudo determinar el período: falta la fecha de emisión.');
+  }
+
+  // --- Moneda ---
+  const moneda = (campos.moneda ?? 'PEN').toUpperCase();
+  let base = campos.base ?? 0;
+  let igv = campos.igv ?? 0;
+  let exonerado = campos.exonerado ?? 0;
+  let total = campos.total ?? 0;
+  let tipoCambioAplicado: number | null = null;
+
+  if (moneda !== 'PEN') {
+    const conv = convertirComprobante(
+      { base: campos.base, igv: campos.igv, exonerado: campos.exonerado, total: campos.total },
+      moneda,
+      operacion,
+      opciones.tipoCambio
+    );
+    base = conv.base;
+    igv = conv.igv;
+    exonerado = conv.exonerado;
+    total = conv.total;
+    tipoCambioAplicado = conv.tipoCambio || null;
+    avisos.push(...conv.avisos);
+  }
+
+  // --- Validación SUNAT (sobre los importes ya en soles) ---
+  // Sin serie o número la validación no puede decir nada útil del duplicado,
+  // pero sí comprobar el RUC y el cuadre de los importes que se leyeron.
+  if (periodo && campos.tipo) {
+    hallazgos.push(
+      ...validarComprobante({
+        tipo: campos.tipo,
+        serie: campos.serie,
+        numero: campos.numero,
+        fechaEmision: campos.fechaEmision,
+        rucEmisor: campos.rucEmisor,
+        rucReceptor: campos.rucReceptor,
+        base,
+        igv,
+        exonerado,
+        total,
+        afectacion: null,
+        periodo,
+      })
+    );
+  }
+
+  // --- Duplicado ---
+  const clave = claveDuplicado('', campos.rucEmisor, campos.serie, campos.numero);
+  if (opciones.yaExiste) {
+    hallazgos.push({
+      codigo: 'duplicado',
+      gravedad: 'error',
+      mensaje: 'Este comprobante ya está registrado en el período.',
+    });
+  }
+
+  // El PDF nunca llega a 'revisado' por bien que se haya leído: el estado lo
+  // decide una persona, así que se pasa 'pdf_texto' y se fuerza 'pendiente'.
+  const estado = decidirEstado(hallazgos, 'pdf_texto', !!opciones.yaExiste);
+
+  return {
+    tipo: campos.tipo ?? 'factura',
+    operacion,
+    serie: campos.serie,
+    numero: campos.numero,
+    fechaEmision: campos.fechaEmision,
+    rucEmisor: campos.rucEmisor,
+    rucReceptor: campos.rucReceptor,
+    razonEmisor: campos.razonSocialEmisor,
+    moneda,
+    tipoCambio: tipoCambioAplicado,
+    base,
+    igv,
+    exonerado,
+    total,
+    afectacion: null,
+    origen: 'pdf_texto',
+    // La confianza del extractor, acotada para no dar falsa seguridad.
+    confianza: Math.min(campos.confianza, CONFIANZA.pdf_texto),
+    estado: estado === 'revisado' ? 'pendiente' : estado,
     hallazgos,
     avisos,
     clave,
