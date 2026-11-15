@@ -15,6 +15,7 @@
  *    el archivo, igual que la bandeja muestra la lectura antes de guardar.
  */
 
+import { fechaISO } from '../_lib/fecha-iso.js';
 import { query, queryOne } from '../_db/db.js';
 import type { ReqLike, ResLike } from '../_auth/http.js';
 import { applyCors, methodNotAllowed, queryParam } from '../_auth/http.js';
@@ -35,7 +36,7 @@ const FORMATOS: FormatoPLE[] = ['14.1', '8.1'];
 async function cargarConfirmados(clienteId: string, periodoId: string): Promise<ComprobanteIngerido[]> {
   const filas = await query<Record<string, unknown>>(
     `SELECT tipo, operacion, serie, numero, fecha_emision, ruc_emisor, ruc_receptor,
-            razon_emisor, moneda, tipo_cambio, base, igv, exonerado, total,
+            razon_emisor, razon_receptor, moneda, tipo_cambio, base, igv, exonerado, total,
             origen, confianza, estado
        FROM public.comprobantes
       WHERE cliente_id = $1 AND periodo_id = $2 AND estado = 'confirmado'
@@ -48,10 +49,11 @@ async function cargarConfirmados(clienteId: string, periodoId: string): Promise<
     operacion: f.operacion === 'venta' ? 'venta' : 'compra',
     serie: (f.serie as string) ?? null,
     numero: (f.numero as string) ?? null,
-    fechaEmision: f.fecha_emision ? String(f.fecha_emision).slice(0, 10) : null,
+    fechaEmision: fechaISO(f.fecha_emision),
     rucEmisor: (f.ruc_emisor as string) ?? null,
     rucReceptor: (f.ruc_receptor as string) ?? null,
     razonEmisor: (f.razon_emisor as string) ?? null,
+    razonReceptor: (f.razon_receptor as string) ?? null,
     moneda: String(f.moneda ?? 'PEN'),
     tipoCambio: f.tipo_cambio === null ? null : Number(f.tipo_cambio),
     base: Number(f.base ?? 0),

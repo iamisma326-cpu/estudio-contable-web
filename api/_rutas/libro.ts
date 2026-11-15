@@ -13,6 +13,7 @@
  * del cliente, y la diferencia aparece en la fiscalización, no antes.
  */
 
+import { fechaISO } from '../_lib/fecha-iso.js';
 import { query, queryOne } from '../_db/db.js';
 import type { ReqLike, ResLike } from '../_auth/http.js';
 import { applyCors, methodNotAllowed, queryParam } from '../_auth/http.js';
@@ -31,10 +32,11 @@ function aComprobante(f: Record<string, unknown>): ComprobanteIngerido {
     operacion: f.operacion === 'venta' ? 'venta' : 'compra',
     serie: (f.serie as string) ?? null,
     numero: (f.numero as string) ?? null,
-    fechaEmision: f.fecha_emision ? String(f.fecha_emision).slice(0, 10) : null,
+    fechaEmision: fechaISO(f.fecha_emision),
     rucEmisor: (f.ruc_emisor as string) ?? null,
     rucReceptor: (f.ruc_receptor as string) ?? null,
     razonEmisor: (f.razon_emisor as string) ?? null,
+    razonReceptor: (f.razon_receptor as string) ?? null,
     moneda: String(f.moneda ?? 'PEN'),
     tipoCambio: f.tipo_cambio === null || f.tipo_cambio === undefined ? null : Number(f.tipo_cambio),
     base: Number(f.base ?? 0),

@@ -44,6 +44,7 @@ function comp(over: Partial<ComprobanteIngerido> = {}): ComprobanteIngerido {
     rucEmisor: '20131312935',
     rucReceptor: '20512345671',
     razonEmisor: 'PROVEEDOR SAC',
+    razonReceptor: 'COMPRADOR SAC',
     moneda: 'PEN',
     tipoCambio: null,
     base: 100,
@@ -120,6 +121,34 @@ console.log('\n--- Registro de compras (8.1): 41 campos ---');
   eq('campo 9 número', l.campos[8], '123');
   eq('campo 12 RUC proveedor', l.campos[11], '20131312935');
   eq('campo 13 razón social', l.campos[12], 'PROVEEDOR SAC');
+
+  // Campo 12 en una venta: debe ir el nombre del CLIENTE, no el del propio
+  // contribuyente. Con razonEmisor aquí, el registro declaraba que se había
+  // facturado a sí mismo, y como el emisor en ventas es uno mismo, el dato
+  // parecía plausible y no se notaba.
+  {
+    const venta = comp({
+      operacion: 'venta',
+      rucEmisor: '20512345671',
+      rucReceptor: '20131312935',
+      razonEmisor: 'MI PROPIO ESTUDIO SAC',
+      razonReceptor: 'COMERCIAL ANDINA EIRL',
+    });
+    const ev = generarPLE([venta], '14.1', { periodo: '2026-11', rucInformante: '20512345671' });
+    const lv = ev.lineas[0];
+    eq('campo 11 RUC del cliente', lv.campos[10], '20131312935');
+    eq('campo 12 nombre del cliente', lv.campos[11], 'COMERCIAL ANDINA EIRL');
+    check('campo 12 no es el nombre propio',
+      lv.campos[11] !== 'MI PROPIO ESTUDIO SAC', lv.campos[11]);
+  }
+
+  // Si la contraparte no se conoce, el campo va vacío y no se rellena con el
+  // emisor: un nombre equivocado en la declaración es peor que un blanco.
+  {
+    const sinNombre = comp({ operacion: 'venta', razonEmisor: 'MI PROPIO ESTUDIO SAC', razonReceptor: null });
+    const ev = generarPLE([sinNombre], '14.1', { periodo: '2026-11', rucInformante: '20512345671' });
+    eq('sin contraparte el campo 12 queda vacío', ev.lineas[0].campos[11], '');
+  }
   eq('campo 14 base gravada', l.campos[13], '100.00');
   eq('campo 15 IGV', l.campos[14], '18.00');
   eq('campo 20 no gravadas', l.campos[19], '0.00');

@@ -40,6 +40,16 @@ export interface ComprobanteIngerido {
   rucEmisor: string | null;
   rucReceptor: string | null;
   razonEmisor: string | null;
+  /**
+   * Razón social de la contraparte.
+   *
+   * En ventas es el nombre del cliente y en compras el del proveedor. Es lo
+   * que pide el registro PLE (campo 12 de 14.1 / campo 13 de 8.1), y no se
+   * puede derivar de `razonEmisor`: en ventas el emisor es el contribuyente
+   * mismo, así que tomar el emisor deja el registro con el nombre propio en
+   * lugar del nombre de a quien se le facturó.
+   */
+  razonReceptor: string | null;
 
   moneda: string;
   tipoCambio: number | null;
@@ -184,6 +194,7 @@ export function ingerirDesdeXML(
     rucEmisor: xml.rucEmisor,
     rucReceptor: xml.rucReceptor,
     razonEmisor: xml.razonSocialEmisor,
+    razonReceptor: xml.razonSocialReceptor,
     moneda,
     tipoCambio: tipoCambioAplicado,
     base,
@@ -313,6 +324,9 @@ export function ingerirDesdePDF(
     rucEmisor: campos.rucEmisor,
     rucReceptor: campos.rucReceptor,
     razonEmisor: campos.razonSocialEmisor,
+    // Un PDF no trae de forma fiable el nombre de la contraparte: se deja
+    // nulo antes que poner ahí el del emisor, que sería un dato falso.
+    razonReceptor: null,
     moneda,
     tipoCambio: tipoCambioAplicado,
     base,

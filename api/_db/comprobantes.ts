@@ -28,6 +28,8 @@ export interface ComprobanteIngerido {
   rucEmisor: string | null;
   rucReceptor: string | null;
   razonEmisor: string | null;
+  /** Razón social de la contraparte: cliente en venta, proveedor en compra. */
+  razonReceptor?: string | null;
   moneda: string;
   tipoCambio: number | null;
   base: number;
@@ -72,6 +74,7 @@ export interface ComprobanteFila {
   fecha_emision: string | null;
   ruc_emisor: string | null;
   razon_emisor: string | null;
+  razon_receptor: string | null;
   moneda: string;
   tipo_cambio: string | number | null;
   base: string | number | null;
@@ -168,13 +171,14 @@ export async function guardarComprobante(
     const fila = await db.queryOne<{ id: string }>(
       `INSERT INTO public.comprobantes (
          cliente_id, periodo_id, tipo, operacion, serie, numero, fecha_emision,
-         ruc_emisor, ruc_receptor, razon_emisor, moneda, tipo_cambio,
+         ruc_emisor, ruc_receptor, razon_emisor, razon_receptor, moneda, tipo_cambio,
          base, igv, exonerado, total, afectacion, origen, confianza, estado
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        RETURNING id`,
       [
         clienteId, periodoId, comp.tipo, comp.operacion, comp.serie, comp.numero,
         comp.fechaEmision, comp.rucEmisor, comp.rucReceptor, comp.razonEmisor,
+        comp.razonReceptor ?? null,
         comp.moneda, comp.tipoCambio, comp.base, comp.igv, comp.exonerado,
         comp.total, comp.afectacion, comp.origen, comp.confianza, comp.estado,
       ]
@@ -184,26 +188,27 @@ export async function guardarComprobante(
   }
 
   // Comprobante + asiento + líneas, en una sentencia.
-  // $21 es un array JSON de líneas para no parametrizar un número variable.
+  // $24 es un array JSON de líneas para no parametrizar un número variable.
+  // Con razon_receptor los parámetros del comprobante llegan hasta $21.
   const fila = await db.queryOne<{ comprobante_id: string; asiento_id: string }>(
     `WITH nuevo_comprobante AS (
        INSERT INTO public.comprobantes (
          cliente_id, periodo_id, tipo, operacion, serie, numero, fecha_emision,
-         ruc_emisor, ruc_receptor, razon_emisor, moneda, tipo_cambio,
+         ruc_emisor, ruc_receptor, razon_emisor, razon_receptor, moneda, tipo_cambio,
          base, igv, exonerado, total, afectacion, origen, confianza, estado
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
        RETURNING id
      ),
      nuevo_asiento AS (
        INSERT INTO public.asientos (comprobante_id, fecha, glosa)
-       SELECT id, $21::date, $22 FROM nuevo_comprobante
+       SELECT id, $22::date, $23 FROM nuevo_comprobante
        RETURNING id, comprobante_id
      ),
      lineas AS (
        INSERT INTO public.asiento_lineas (asiento_id, cuenta, cuenta_nombre, debe, haber)
        SELECT nuevo_asiento.id, l.cuenta, l.cuenta_nombre, l.debe, l.haber
          FROM nuevo_asiento,
-              jsonb_to_recordset($23::jsonb)
+              jsonb_to_recordset($24::jsonb)
                 AS l(cuenta text, cuenta_nombre text, debe numeric, haber numeric)
        RETURNING 1
      )
@@ -212,6 +217,7 @@ export async function guardarComprobante(
     [
       clienteId, periodoId, comp.tipo, comp.operacion, comp.serie, comp.numero,
       comp.fechaEmision, comp.rucEmisor, comp.rucReceptor, comp.razonEmisor,
+      comp.razonReceptor ?? null,
       comp.moneda, comp.tipoCambio, comp.base, comp.igv, comp.exonerado,
       comp.total, comp.afectacion, comp.origen, comp.confianza, comp.estado,
       asiento.fecha, asiento.glosa,

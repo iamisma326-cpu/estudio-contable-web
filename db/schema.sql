@@ -142,6 +142,12 @@ ALTER TABLE public.periodos
 ALTER TABLE public.clientes
   ADD COLUMN IF NOT EXISTS datos_anuales jsonb NOT NULL DEFAULT '{}'::jsonb;
 
+-- Razón social de la contraparte: el cliente en una venta, el proveedor en una
+-- compra. Sin ella el registro PLE declaraba el nombre del propio
+-- contribuyente en el campo del cliente, porque solo se guardaba el emisor.
+ALTER TABLE public.comprobantes
+  ADD COLUMN IF NOT EXISTS razon_receptor text;
+
 -- El saldo a favor nunca es negativo: si lo fuera, es a pagar.
 ALTER TABLE public.periodos
   DROP CONSTRAINT IF EXISTS periodos_saldo_favor_positivo;

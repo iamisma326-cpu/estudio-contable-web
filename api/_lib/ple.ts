@@ -178,7 +178,10 @@ export function lineaVenta(
     '',                                       // 9  número final (tickets)
     DOC_RUC,                                  // 10 tipo doc. identidad del cliente
     limpiar(c.rucReceptor, 15),               // 11 nro doc. identidad del cliente
-    limpiar(c.razonEmisor, 100),              // 12 razón social del cliente
+    // Campo 12: razón social del CLIENTE. No la del emisor: en ventas el
+    // emisor es el propio contribuyente, y escribirla aquí deja el registro
+    // declarando que le facturó a sí mismo.
+    limpiar(c.razonReceptor ?? '', 100),      // 12 razón social del cliente
     num(0),                                   // 13 exportación
     num(c.base),                              // 14 base imponible gravada
     num(0),                                   // 15 descuento de la base
@@ -258,7 +261,10 @@ export function lineaCompra(
     '',                                       // 10 número final
     DOC_RUC,                                  // 11 tipo doc. identidad del proveedor
     limpiar(c.rucEmisor, 15),                 // 12 nro doc. del proveedor
-    limpiar(c.razonEmisor, 100),              // 13 razón social del proveedor
+    // Campo 13: razón social del PROVEEDOR, que en compras sí es el emisor.
+    // Se prefiere la del receptor si el origen fue una nota que invierte los
+    // papeles; en el caso normal coinciden.
+    limpiar(c.razonEmisor ?? '', 100),        // 13 razón social del proveedor
     num(gravado),                             // 14 base gravada
     num(igv),                                 // 15 IGV
     num(0),                                   // 16 base tasa distinta
