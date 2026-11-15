@@ -40,9 +40,9 @@ import {
  * El XML se lee en la API, pero la lógica vive en src/lib. Duplicar el parser
  * aquí sería garantizar que se desincronicen, así que se importa tal cual.
  */
-import { parsearXML, pareceXML } from '../../src/lib/xml-ubl.js';
-import { ingerirDesdeXML, resumenComprobante } from '../../src/lib/ingesta.js';
-import { generarAsiento } from '../../src/lib/asientos.js';
+import { parsearXML, pareceXML } from '../_lib/xml-ubl.js';
+import { ingerirDesdeXML, resumenComprobante } from '../_lib/ingesta.js';
+import { generarAsiento } from '../_lib/asientos.js';
 
 /** Tope de tamaño: un comprobante UBL no pasa de decenas de KB. */
 const MAX_XML = 2 * 1024 * 1024;
