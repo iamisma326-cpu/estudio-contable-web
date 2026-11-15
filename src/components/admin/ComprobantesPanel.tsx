@@ -356,19 +356,32 @@ export default function ComprobantesPanel() {
       const f = lista[i];
       try {
         const cuerpo = await prepararCuerpo(f);
-        const r = await apiSend<{ comprobanteId?: string; errores?: string[]; estado?: string }>(
+        const r = await apiSend<{
+          comprobanteId?: string;
+          errores?: string[];
+          estado?: string;
+          guardado?: boolean;
+          error?: string;
+          yaExiste?: boolean;
+        }>(
           '/api/comprobantes',
           'POST',
-          { clienteId, periodo, guardarAsiento: true, ...cuerpo }
+          { clienteId, periodo, guardar: true, guardarAsiento: true, ...cuerpo }
         );
-        if (r.ok) {
+        // Se cuenta por `guardado`, no por el código HTTP: el endpoint responde
+        // 200 también cuando solo leyó el comprobante. Mirar r.ok bastaba para
+        // anunciar "3 de 3 guardados" sin haber guardado ninguno.
+        if (r.ok && r.data?.guardado === true) {
           guardados++;
         } else {
           // Se prefiere el motivo del servidor: dice qué campo falló.
+          const d = r.data;
           const motivo =
-            (r.data as { error?: string; errores?: string[] })?.error ??
-            (r.data as { errores?: string[] })?.errores?.join('; ') ??
-            `Error ${r.status ?? ''}`.trim();
+            d?.error ??
+            d?.errores?.join('; ') ??
+            // Un 200 sin `guardado` significa que el servidor no guardó y no
+            // dijo por qué. Se nombra así en vez de llamarlo "error 200".
+            (!r.ok ? `Error ${r.status ?? ''}`.trim() : 'No se guardó (el servidor no lo confirmó).');
           fallidos.push({ archivo: f.name, motivo: String(motivo) });
         }
       } catch {

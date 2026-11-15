@@ -231,7 +231,10 @@ const rentaVacia = { ingresosNetos: 0, tasa: 0.01, monto: 0, criterio: 'tasa' as
       periodo: '2026-11',
       cliente: { ruc: '20512345671', razonSocial: 'CLIENTE SA', regimen: 'RMT' },
       confirmados: [
-        comp({ operacion: 'venta', razonEmisor: 'CLIENTE SA', rucReceptor: '20400000001' }),
+        // El fixture antes ponía el nombre del cliente en razonEmisor, que es
+        // precisamente el dato equivocado: en una venta razonEmisor es uno
+        // mismo. Así el test acompañaba al bug en vez de detectarlo.
+        comp({ operacion: 'venta', razonEmisor: 'MI EMPRESA SAC', razonReceptor: 'CLIENTE SA', rucReceptor: '20400000001' }),
         comp({ numero: '2' }),
       ],
       pendientes: [{ comprobante: comp({ numero: '3', estado: 'pendiente' }), motivo: 'Sin confirmar' }],
@@ -252,6 +255,10 @@ const rentaVacia = { ingresosNetos: 0, tasa: 0.01, monto: 0, criterio: 'tasa' as
   check('Compras NO tiene la venta', !compras.includes('20400000001'));
   check('Compras tiene la compra', compras.includes('20131312935'));
   check('Ventas no tiene las compras', !ventas.includes('20131312935'));
+  // En el libro de ventas la razón social es la del cliente; si sale la propia,
+  // el libro declara que la empresa se facturó a sí misma.
+  check('Ventas nombra al cliente', ventas.includes('CLIENTE SA'), ventas.slice(0, 200));
+  check('Ventas NO nombra al propio emisor', !ventas.includes('MI EMPRESA SAC'));
 
   const diario = partes.get('xl/worksheets/sheet3.xml') ?? '';
   check('Diario tiene la cuenta 60', diario.includes('60'));

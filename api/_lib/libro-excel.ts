@@ -71,7 +71,11 @@ function filaLibro(c: ComprobanteIngerido): Celda[] {
     c.serie ?? '',
     c.numero ?? '',
     c.operacion === 'venta' ? (c.rucReceptor ?? '') : (c.rucEmisor ?? ''),
-    c.razonEmisor ?? '',
+    // La razón social debe ser la de la contraparte, igual que el RUC de al
+    // lado. Antes iba siempre razonEmisor, así que el libro de ventas nombraba
+    // al propio contribuyente como si fuera su cliente. Va vacío antes que con
+    // un nombre equivocado.
+    c.operacion === 'venta' ? (c.razonReceptor ?? '') : (c.razonEmisor ?? ''),
     c.base,
     c.igv,
     c.exonerado,
@@ -120,7 +124,11 @@ function hojaDiario(
   for (const c of confirmados) {
     const lineas = generar(c);
     if (!lineas) continue;
-    const glosa = `${TIPO[c.tipo] ?? c.tipo} ${c.serie ?? ''}-${c.numero ?? ''} ${c.razonEmisor ?? ''}`.trim();
+    // En la glosa se nombra a la contraparte, igual que en las columnas de
+    // RUC y razón social: en una venta el asiento se explica por el cliente,
+    // no repitiendo el nombre propio.
+    const contraparte = c.operacion === 'venta' ? c.razonReceptor : c.razonEmisor;
+    const glosa = `${TIPO[c.tipo] ?? c.tipo} ${c.serie ?? ''}-${c.numero ?? ''} ${contraparte ?? ''}`.trim();
     for (const l of lineas) {
       filas.push([
         n,
@@ -215,7 +223,7 @@ function hojaPendientes(d: DatosLibro): Hoja {
       c.serie ?? '',
       c.numero ?? '',
       c.operacion === 'venta' ? (c.rucReceptor ?? '') : (c.rucEmisor ?? ''),
-      c.razonEmisor ?? '',
+      c.operacion === 'venta' ? (c.razonReceptor ?? '') : (c.razonEmisor ?? ''),
       c.total,
       ESTADO[c.estado] ?? c.estado,
       motivo,
