@@ -180,6 +180,16 @@ export default function ComprobantesPanel() {
   const [errorLectura, setErrorLectura] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Carga por lotes: un mes real trae decenas de archivos y subirlos de uno en
+  // uno es lo que hace que nadie use la herramienta.
+  const [lote, setLote] = useState<{
+    total: number;
+    hechos: number;
+    guardados: number;
+    fallidos: Array<{ archivo: string; motivo: string }>;
+    activo: boolean;
+  } | null>(null);
+
   // Lista del período (paso 2).
   const [lista, setLista] = useState<ListaRespuesta | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -323,6 +333,54 @@ export default function ComprobantesPanel() {
   }
 
   /** Paso 2: guardar lo que ya se revisó. */
+  /**
+   * Sube y guarda varios archivos seguidos.
+   *
+   * Va de uno en uno a propósito: el endpoint valida y genera el asiento de
+   * cada comprobante, y en paralelo dos facturas del mismo proveedor podrían
+   * chocar contra la restricción de duplicados. Lo que falla no detiene al
+   * resto: se acumula y se informa al final, porque abortar en el archivo 3 de
+   * 40 obliga a averiguar cuáles entraron.
+   */
+  async function subirLote(files: FileList) {
+    const lista = Array.from(files);
+    if (lista.length === 0) return;
+    const fallidos: Array<{ archivo: string; motivo: string }> = [];
+    let guardados = 0;
+
+    setLote({ total: lista.length, hechos: 0, guardados: 0, fallidos: [], activo: true });
+    setErrorLectura(null);
+    setLectura(null);
+
+    for (let i = 0; i < lista.length; i++) {
+      const f = lista[i];
+      try {
+        const cuerpo = await prepararCuerpo(f);
+        const r = await apiSend<{ comprobanteId?: string; errores?: string[]; estado?: string }>(
+          '/api/comprobantes',
+          'POST',
+          { clienteId, periodo, guardarAsiento: true, ...cuerpo }
+        );
+        if (r.ok) {
+          guardados++;
+        } else {
+          // Se prefiere el motivo del servidor: dice qué campo falló.
+          const motivo =
+            (r.data as { error?: string; errores?: string[] })?.error ??
+            (r.data as { errores?: string[] })?.errores?.join('; ') ??
+            `Error ${r.status ?? ''}`.trim();
+          fallidos.push({ archivo: f.name, motivo: String(motivo) });
+        }
+      } catch {
+        fallidos.push({ archivo: f.name, motivo: 'No se pudo leer el archivo.' });
+      }
+      setLote({ total: lista.length, hechos: i + 1, guardados, fallidos: [...fallidos], activo: i + 1 < lista.length });
+    }
+
+    if (fileRef.current) fileRef.current.value = '';
+    await cargarLista();
+  }
+
   async function guardar() {
     if (!fileRef.current?.files?.[0]) return;
     setLeyendo(true);
@@ -398,16 +456,43 @@ export default function ComprobantesPanel() {
             className={styles.fileInput}
             type="file"
             accept=".xml,.pdf,text/xml,application/xml,application/pdf"
-            disabled={!clienteId || leyendo}
+            multiple
+            disabled={!clienteId || leyendo || lote?.activo}
             onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void leerArchivo(f);
+              const fs = e.target.files;
+              if (!fs || fs.length === 0) return;
+              // Un solo archivo mantiene el flujo de revisión previa; varios van
+              // directo al lote, porque revisar 40 de uno en uno no aporta nada.
+              if (fs.length === 1) void leerArchivo(fs[0]);
+              else void subirLote(fs);
             }}
           />
         </div>
 
         {errorLectura && <p className={styles.alert}>{errorLectura}</p>}
         {leyendo && <p className={styles.muted}>Leyendo…</p>}
+
+        {lote && (
+          <div style={{ marginTop: 12 }}>
+            <p className={styles.muted}>
+              {lote.activo
+                ? `Subiendo ${lote.hechos} de ${lote.total}… (${lote.guardados} guardados)`
+                : `${lote.guardados} de ${lote.total} guardados.`}
+            </p>
+            {lote.fallidos.length > 0 && (
+              <div className={styles.alert} style={{ marginTop: 8 }}>
+                <strong>No se pudieron guardar {lote.fallidos.length}:</strong>
+                <ul style={{ margin: '6px 0 0 18px' }}>
+                  {lote.fallidos.map((f) => (
+                    <li key={f.archivo}>
+                      <code>{f.archivo}</code>: {f.motivo}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
         {lectura && !lectura.guardado && (
           <div style={{ marginTop: 16 }}>
