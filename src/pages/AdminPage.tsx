@@ -5,6 +5,7 @@ import DarkBackground from '../components/DarkBackground';
  * Pestañas:
  *   Resumen   métricas de usuarios, altas, recursos y actividad
  *   Usuarios  búsqueda, filtros, rol, suspensión y baja
+ *   Comprobantes  bandeja de facturas: subir, revisar y confirmar
  *   Recursos  catálogo del área privada
  *   Editor    herramienta de edición asistida de PDF (PDFEditor)
  *
@@ -20,11 +21,13 @@ import PDFEditor from '../components/PDFEditor';
 import StatsPanel from '../components/admin/StatsPanel';
 import UsersPanel from '../components/admin/UsersPanel';
 import ResourcesPanel from '../components/admin/ResourcesPanel';
+import ComprobantesPanel from '../components/admin/ComprobantesPanel';
 import styles from '../styles/AdminPage.module.css';
 
 const TABS = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'usuarios', label: 'Usuarios' },
+  { id: 'comprobantes', label: 'Comprobantes' },
   { id: 'recursos', label: 'Recursos' },
   { id: 'editor', label: 'Editor PDF' },
 ] as const;
@@ -89,6 +92,7 @@ export default function AdminPage() {
       <div className={styles.content}>
         {tab === 'resumen' && <StatsPanel />}
         {tab === 'usuarios' && <UsersPanel />}
+        {tab === 'comprobantes' && <ComprobantesPanel />}
         {tab === 'recursos' && <ResourcesPanel />}
         {tab === 'editor' && <PDFEditor />}
       </div>

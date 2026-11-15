@@ -33,6 +33,7 @@ import adminResourceFile from './_rutas/admin/resource-file.js';
 import pdfEdit from './_rutas/pdf-edit.js';
 import pdfRender from './_rutas/pdf-render.js';
 import comprobantes from './_rutas/comprobantes.js';
+import clientes from './_rutas/clientes.js';
 
 /** Handler con la firma que ya usan todos los archivos de api/_rutas/. */
 type Handler = (req: ReqLike, res: ResLike) => Promise<void>;
@@ -55,6 +56,8 @@ const RUTAS: Record<string, Handler> = {
   'pdf-edit': pdfEdit,
   'pdf-render': pdfRender,
   comprobantes,
+  clientes,
+  periodos: clientes,
 };
 
 /**
@@ -99,6 +102,9 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
   }
 
   const destino = RUTAS[normalizar(ruta)];
+  // El handler de clientes atiende dos recursos; se le dice cuál sin mirar la URL.
+  const nombre = normalizar(ruta);
+  (req as ReqLike & { _recurso?: string })._recurso = nombre;
 
   if (!destino) {
     // Una ruta olvidada en RUTAS se nota aquí, no se cae el resto de la API.

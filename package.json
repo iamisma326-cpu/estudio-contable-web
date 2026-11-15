@@ -18,7 +18,8 @@
     "test:api": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-comprobantes.ts",
     "test": "npm run test:comprobante && npm run test:asientos && npm run test:xml && npm run test:moneda && npm run test:ingesta",
     "db:migrate": "node --env-file=.env scripts/db-migrate.mjs",
-    "db:seed-admin": "node --env-file=.env scripts/seed-admin.mjs"
+    "db:seed-admin": "node --env-file=.env scripts/seed-admin.mjs",
+    "test:clientes": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-clientes.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",
