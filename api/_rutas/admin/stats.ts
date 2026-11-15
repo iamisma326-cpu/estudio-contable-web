@@ -10,10 +10,10 @@
  * login y no conviene encadenar round-trips al pooler.
  */
 
-import { query, queryOne } from '../_db/db.js';
-import type { ReqLike, ResLike } from '../_auth/http.js';
-import { applyCors, methodNotAllowed } from '../_auth/http.js';
-import { requireAdmin } from '../_auth/guard.js';
+import { query, queryOne } from '../../_db/db.js';
+import type { ReqLike, ResLike } from '../../_auth/http.js';
+import { applyCors, methodNotAllowed } from '../../_auth/http.js';
+import { requireAdmin } from '../../_auth/guard.js';
 
 interface Overview {
   users_total: number;

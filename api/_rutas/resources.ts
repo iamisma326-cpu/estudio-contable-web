@@ -10,11 +10,11 @@
  * administra desde /api/admin/resources.
  */
 
-import { query, queryOne } from './_db/db.js';
-import type { ReqLike, ResLike } from './_auth/http.js';
-import { applyCors, methodNotAllowed, queryParam, readJsonBody } from './_auth/http.js';
-import { requireUser } from './_auth/guard.js';
-import { signedDownload } from './_storage/s3.js';
+import { query, queryOne } from '../_db/db.js';
+import type { ReqLike, ResLike } from '../_auth/http.js';
+import { applyCors, methodNotAllowed, queryParam, readJsonBody } from '../_auth/http.js';
+import { requireUser } from '../_auth/guard.js';
+import { signedDownload } from '../_storage/s3.js';
 
 export default async function handler(req: ReqLike, res: ResLike): Promise<void> {
   applyCors(req, res, 'GET, POST');

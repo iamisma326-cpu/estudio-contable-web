@@ -7,11 +7,11 @@
  * DELETE /api/admin/resources?id=…      → elimina
  */
 
-import { query, queryOne } from '../_db/db.js';
-import type { ReqLike, ResLike } from '../_auth/http.js';
-import { applyCors, methodNotAllowed, queryParam, readJsonBody } from '../_auth/http.js';
-import { requireAdmin } from '../_auth/guard.js';
-import { deleteObject } from '../_storage/s3.js';
+import { query, queryOne } from '../../_db/db.js';
+import type { ReqLike, ResLike } from '../../_auth/http.js';
+import { applyCors, methodNotAllowed, queryParam, readJsonBody } from '../../_auth/http.js';
+import { requireAdmin } from '../../_auth/guard.js';
+import { deleteObject } from '../../_storage/s3.js';
 
 interface ResourceRow {
   id: string;

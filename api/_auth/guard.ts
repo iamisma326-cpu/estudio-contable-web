@@ -19,7 +19,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'asistente' | 'user';
   banned: boolean;
 }
 
@@ -79,7 +79,10 @@ export async function getUser(req: ReqLike): Promise<AuthUser | null> {
     id: row.id,
     email: row.email,
     name: row.name,
-    role: row.role === 'admin' ? 'admin' : 'user',
+    // El rol vive como texto libre en neon_auth.user (esquema administrado por
+    // Neon Auth): aquí se normaliza a los tres valores que entiende la app.
+    // Cualquier otro valor cae en 'user' — nunca escala privilegios solo.
+    role: row.role === 'admin' ? 'admin' : row.role === 'asistente' ? 'asistente' : 'user',
     banned: row.banned === true,
   };
 }
@@ -98,7 +101,24 @@ export async function requireUser(req: ReqLike, res: ResLike): Promise<AuthUser 
   return user;
 }
 
-/** Guard: además exige role = 'admin'. */
+/**
+ * Guard: sesión válida con rol operativo (admin o asistente).
+ *
+ * Para las herramientas del estudio que NO son administración de cuentas:
+ * registrar comprobantes, confirmar partidas, exportar libros. Un asistente
+ * puede operar aquí pero sigue sin poder tocar usuarios (eso es requireAdmin).
+ */
+export async function requireStaff(req: ReqLike, res: ResLike): Promise<AuthUser | null> {
+  const user = await requireUser(req, res);
+  if (!user) return null;
+  if (user.role !== 'admin' && user.role !== 'asistente') {
+    res.status(403).json({ ok: false, error: 'forbidden' });
+    return null;
+  }
+  return user;
+}
+
+/** Guard: además exige role = 'admin'. Un asistente NO pasa por aquí. */
 export async function requireAdmin(req: ReqLike, res: ResLike): Promise<AuthUser | null> {
   const user = await requireUser(req, res);
   if (!user) return null;

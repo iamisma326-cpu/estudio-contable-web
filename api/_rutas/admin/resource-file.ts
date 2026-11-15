@@ -10,11 +10,11 @@
  * de /api/admin/resources una vez completada la subida.
  */
 
-import { query, queryOne } from '../_db/db.js';
-import type { ReqLike, ResLike } from '../_auth/http.js';
-import { applyCors, methodNotAllowed, queryParam, readJsonBody } from '../_auth/http.js';
-import { requireAdmin } from '../_auth/guard.js';
-import { deleteObject, safeFileName, signedUpload } from '../_storage/s3.js';
+import { query, queryOne } from '../../_db/db.js';
+import type { ReqLike, ResLike } from '../../_auth/http.js';
+import { applyCors, methodNotAllowed, queryParam, readJsonBody } from '../../_auth/http.js';
+import { requireAdmin } from '../../_auth/guard.js';
+import { deleteObject, safeFileName, signedUpload } from '../../_storage/s3.js';
 
 const MAX_BYTES = 25 * 1024 * 1024;
 

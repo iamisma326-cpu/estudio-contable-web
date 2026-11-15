@@ -19,11 +19,11 @@
  * Autenticación: JWT de Neon Auth con role = admin (ver api/_auth/guard.ts).
  */
 
-import type { ReqLike, ResLike } from './_auth/http.js';
-import { readJsonBody } from './_auth/http.js';
-import { requireAdmin } from './_auth/guard.js';
+import type { ReqLike, ResLike } from '../_auth/http.js';
+import { readJsonBody } from '../_auth/http.js';
+import { requireAdmin } from '../_auth/guard.js';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { findAllTextCoords, findAnchorCoords } from './_pdf/text.js';
+import { findAllTextCoords, findAnchorCoords } from '../_pdf/text.js';
 
 interface ReplaceOp {
   page: number;

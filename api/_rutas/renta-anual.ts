@@ -19,7 +19,7 @@ import {
   RENTA_EJERCICIO_EMBEBIDO,
   todayInLima,
   type RentaRow,
-} from '../src/data/sunatSchedule.js';
+} from '../../src/data/sunatSchedule.js';
 
 const BASE_URL = 'https://www.sunat.gob.pe/orientacion/cronogramas';
 const TIMEOUT_MS = 8000;

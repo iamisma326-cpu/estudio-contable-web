@@ -22,10 +22,10 @@
  *   - respuesta cacheable no (cada request es único).
  */
 
-import type { ReqLike, ResLike } from './_auth/http.js';
-import { readJsonBody } from './_auth/http.js';
-import { requireAdmin } from './_auth/guard.js';
-import { extractPdfTextPerPage, extractPdfTextDetailed, extractFormFields } from './_pdf/text.js';
+import type { ReqLike, ResLike } from '../_auth/http.js';
+import { readJsonBody } from '../_auth/http.js';
+import { requireAdmin } from '../_auth/guard.js';
+import { extractPdfTextPerPage, extractPdfTextDetailed, extractFormFields } from '../_pdf/text.js';
 import { PDFDocument } from 'pdf-lib';
 
 const GOOGLE_MODEL = 'gemini-3.8-flash';

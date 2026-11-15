@@ -4,18 +4,10 @@ import {defineConfig, loadEnv} from 'vite';
 
 // La misma lógica que api/*.ts (serverless de Vercel), reutilizada
 // en desarrollo para que /api/* exista también en `npm run dev`.
-import tipoCambio from './api/tipo-cambio';
-import cronograma from './api/cronograma';
-import rentaAnual from './api/renta-anual';
-import authMe from './api/auth/me';
-import authProfile from './api/auth/profile';
-import resources from './api/resources';
-import adminStats from './api/admin/stats';
-import adminUsers from './api/admin/users';
-import adminResources from './api/admin/resources';
-import adminResourceFile from './api/admin/resource-file';
-import pdfEdit from './api/pdf-edit';
-import pdfRender from './api/pdf-render';
+// Se importa el router catch-all (api/[...ruta].ts) y no los 12 handlers
+// sueltos: así dev y producción despachan por el mismo sitio, y una ruta
+// nueva solo se registra en RUTAS.
+import routerApi from './api/[...ruta]';
 
 /** Shape que esperan los handlers de api/ (espejo de ResLike en cada uno) */
 interface DevRes {
@@ -97,18 +89,7 @@ export default defineConfig(({ mode }) => {
               await handler(req, adapted);
             };
 
-          server.middlewares.use('/api/tipo-cambio', bridge(tipoCambio));
-          server.middlewares.use('/api/cronograma', bridge(cronograma));
-          server.middlewares.use('/api/renta-anual', bridge(rentaAnual));
-          server.middlewares.use('/api/auth/me', bridge(authMe));
-          server.middlewares.use('/api/auth/profile', bridge(authProfile));
-          server.middlewares.use('/api/resources', bridge(resources));
-          server.middlewares.use('/api/admin/stats', bridge(adminStats));
-          server.middlewares.use('/api/admin/users', bridge(adminUsers));
-          server.middlewares.use('/api/admin/resources', bridge(adminResources));
-          server.middlewares.use('/api/admin/resource-file', bridge(adminResourceFile));
-          server.middlewares.use('/api/pdf-edit', bridge(pdfEdit));
-          server.middlewares.use('/api/pdf-render', bridge(pdfRender));
+          server.middlewares.use('/api', bridge(routerApi));
         },
       },
     ],

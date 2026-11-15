@@ -9,10 +9,10 @@
  * Los campos ausentes no se borran: solo se actualiza lo que llega.
  */
 
-import { query, queryOne } from '../_db/db.js';
-import type { ReqLike, ResLike } from '../_auth/http.js';
-import { applyCors, methodNotAllowed, readJsonBody } from '../_auth/http.js';
-import { requireUser } from '../_auth/guard.js';
+import { query, queryOne } from '../../_db/db.js';
+import type { ReqLike, ResLike } from '../../_auth/http.js';
+import { applyCors, methodNotAllowed, readJsonBody } from '../../_auth/http.js';
+import { requireUser } from '../../_auth/guard.js';
 
 export default async function handler(req: ReqLike, res: ResLike): Promise<void> {
   applyCors(req, res, 'POST');

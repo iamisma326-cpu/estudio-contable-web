@@ -7,10 +7,10 @@
  * un rol nuestro en el JWT) y para cargar los datos de perfil.
  */
 
-import { queryOne } from '../_db/db.js';
-import type { ReqLike, ResLike } from '../_auth/http.js';
-import { applyCors, methodNotAllowed } from '../_auth/http.js';
-import { requireUser } from '../_auth/guard.js';
+import { queryOne } from '../../_db/db.js';
+import type { ReqLike, ResLike } from '../../_auth/http.js';
+import { applyCors, methodNotAllowed } from '../../_auth/http.js';
+import { requireUser } from '../../_auth/guard.js';
 
 export interface ProfileRow {
   empresa: string | null;
