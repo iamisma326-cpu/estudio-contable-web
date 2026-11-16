@@ -3,10 +3,8 @@
  * tabla completa del cronograma 2026 e hitos fijos del año.
  */
 
-import { useCallback, useState } from 'react';
 import { CalendarDays } from 'lucide-react';
-import DeadlineConsult from '../DeadlineConsult';
-import DeadlineTable from '../DeadlineTable';
+import DeadlineTool from './DeadlineTool';
 import styles from '../../styles/PanelPage.module.css';
 
 /** Hitos que no dependen del dígito del RUC. */
@@ -20,10 +18,6 @@ const milestones = [
 ];
 
 export default function CalendarPanel() {
-  const [activeDigit, setActiveDigit] = useState<number | null>(null);
-
-  const handleDigitChange = useCallback((digit: number | null) => setActiveDigit(digit), []);
-
   return (
     <div className={styles.stack}>
       <header className={styles.sectionHead}>
@@ -39,11 +33,7 @@ export default function CalendarPanel() {
         </div>
       </header>
 
-      <div className={styles.panel}>
-        <DeadlineConsult onDigitChange={handleDigitChange} />
-      </div>
-
-      <DeadlineTable activeDigit={activeDigit} />
+      <DeadlineTool />
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>Hitos del año</h2>
