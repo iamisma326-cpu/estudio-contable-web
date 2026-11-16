@@ -298,7 +298,8 @@ Todos entran en `api/[...ruta].ts` → `RUTAS`. Ninguna función nueva.
 | `POST /api/admin/whatsapp/desvincular` | `requireAdmin` | cierra la sesión de WhatsApp |
 | `GET /api/noticias` | sesión | feed de publicadas para `/panel` y la guía |
 | `POST /api/suscripcion` | sesión | el cliente elige canal, teléfono y consentimiento |
-| `GET /api/baja?token=` | público | baja sin login desde el enlace del email |
+| `GET /api/baja?token=` | público | valida el token sin modificar nada (anti-prefetch) |
+| `POST /api/baja` | público | aplica la baja desde el enlace del email |
 | `GET /api/cron/noticias` | `CRON_SECRET` | detector + reintentos + digest del lunes |
 
 Detalles que importan:
