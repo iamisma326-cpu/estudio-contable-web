@@ -9,6 +9,7 @@ import { query } from '../../_db/db.js';
 import type { ReqLike, ResLike } from '../../_auth/http.js';
 import { applyCors, methodNotAllowed, queryParam } from '../../_auth/http.js';
 import { requireAdmin } from '../../_auth/guard.js';
+import { esUuid } from '../../_lib/noticias/comun.js';
 
 interface EnvioRow {
   id: string;
@@ -19,6 +20,7 @@ interface EnvioRow {
   email: string | null;
   canal: 'email' | 'whatsapp';
   destino: string;
+  prueba: boolean;
   estado: string;
   intentos: number;
   proveedor_id: string | null;
@@ -47,7 +49,7 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
   const filtros: string[] = [];
   const params: unknown[] = [];
 
-  if (noticiaId && /^[0-9a-f-]{36}$/i.test(noticiaId)) {
+  if (noticiaId && esUuid(noticiaId)) {
     params.push(noticiaId);
     filtros.push(`e.noticia_id = $${params.length}::uuid`);
   }
@@ -59,7 +61,7 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
   const envios = await query<EnvioRow>(
     `SELECT e.id::text, e.noticia_id, n.titulo AS noticia,
             e.user_id, u.name AS nombre, u.email,
-            e.canal, e.destino, e.estado, e.intentos, e.proveedor_id,
+            e.canal, e.destino, e.prueba, e.estado, e.intentos, e.proveedor_id,
             e.error, e.enviado_en, e.created_at
        FROM public.envios e
        JOIN public.noticias n ON n.id = e.noticia_id
@@ -78,9 +80,9 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     fallidos: number;
   }>(
     `SELECT n.id AS noticia_id, n.titulo,
-            count(e.id) FILTER (WHERE e.estado = 'enviado')::int   AS enviados,
-            count(e.id) FILTER (WHERE e.estado = 'pendiente')::int AS pendientes,
-            count(e.id) FILTER (WHERE e.estado = 'fallido')::int   AS fallidos
+            count(e.id) FILTER (WHERE e.estado = 'enviado' AND e.prueba = false)::int   AS enviados,
+            count(e.id) FILTER (WHERE e.estado = 'pendiente' AND e.prueba = false)::int AS pendientes,
+            count(e.id) FILTER (WHERE e.estado = 'fallido' AND e.prueba = false)::int   AS fallidos
        FROM public.noticias n
        LEFT JOIN public.envios e ON e.noticia_id = n.id
       GROUP BY n.id, n.titulo

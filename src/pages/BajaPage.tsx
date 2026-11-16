@@ -36,7 +36,31 @@ export default function BajaPage() {
 
     (async () => {
       try {
-        const res = await fetch(`/api/baja?token=${encodeURIComponent(token)}`);
+        // Primero se valida el token sin modificarlo (los escáneres de correo
+        // abren el enlace, pero no ejecutan este POST). Solo si sigue activa
+        // se aplica la baja.
+        const infoRes = await fetch(`/api/baja?token=${encodeURIComponent(token)}`);
+        const info = (await infoRes.json().catch(() => null)) as
+          | { ok?: boolean; valido?: boolean; activo?: boolean; error?: string }
+          | null;
+        if (cancelled) return;
+
+        if (!infoRes.ok || !info?.ok || !info.valido) {
+          setEstado('error');
+          setMensaje('El enlace no es válido o la suscripción ya no existe.');
+          return;
+        }
+        if (info.activo === false) {
+          setEstado('ok');
+          setMensaje('Esta suscripción ya estaba dada de baja.');
+          return;
+        }
+
+        const res = await fetch('/api/baja', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
         const data = (await res.json().catch(() => null)) as
           | { ok?: boolean; mensaje?: string; error?: string }
           | null;
@@ -46,7 +70,7 @@ export default function BajaPage() {
           setMensaje(data.mensaje || 'Listo. No volverás a recibir avisos del estudio.');
         } else {
           setEstado('error');
-          setMensaje('El enlace no es válido o la suscripción ya no existe.');
+          setMensaje('No se pudo confirmar la baja. Inténtalo otra vez en un momento.');
         }
       } catch {
         if (!cancelled) {
@@ -94,10 +118,10 @@ export default function BajaPage() {
         )}
 
         <div className={styles.actions}>
-          <Link className={styles.link} to="/panel?tab=cuenta">
+          <Link className={styles.link} to="/panel?tab=cuenta" referrerPolicy="no-referrer">
             Ir a mi cuenta
           </Link>
-          <Link className={styles.linkMuted} to="/">
+          <Link className={styles.linkMuted} to="/" referrerPolicy="no-referrer">
             Volver al sitio
           </Link>
         </div>

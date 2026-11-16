@@ -42,6 +42,7 @@ En **Railway** (servicio `estudio-whatsapp`):
 ```
 WA_SERVICIO_TOKEN=<el mismo de Vercel>
 WA_DB_PATH=/data/wa.db
+WA_BAJA_WEBHOOK_URL=https://estudio-contable-web-chi.vercel.app/api/whatsapp/baja
 PORT=8080
 ```
 
@@ -63,9 +64,15 @@ con una cadena Postgres de Neon. Si está definida, gana sobre `WA_DB_PATH`.
 - **Cola**: «Encolar para el cron» deja las filas pendientes; el cron las
   procesa en la siguiente pasada.
 - **Digest**: el cron de las 12:00 UTC (07:00 Lima) detecta cambios y, si es
-  lunes, manda en **un solo mensaje** lo publicado y no enviado en 7 días.
+  lunes, manda en **un solo mensaje** lo publicado en 7 días que aún no haya
+  llegado a algún suscriptor. «Enviar solo a mí» no bloquea el envío al resto:
+  la clave única solo evita repetirle el mensaje a quien ya lo recibió.
 - **Reintentos**: hasta 5 intentos con la misma fila. La clave única
   `(noticia_id, user_id, canal)` impide duplicados.
+- **Baja antes del envío**: si el cliente se da de baja o apaga un canal
+  después de encolar, la fila pendiente se marca `omitido` y no sale.
+- **Pruebas**: «Enviar solo a mí» se guarda con `prueba=true`; no cuenta como
+  envío real y no se omite por el estado de la suscripción del admin.
 
 El cron se puede probar a mano:
 
@@ -80,6 +87,12 @@ curl -H "Authorization: Bearer $CRON_SECRET" \
 2. Escanear el QR desde el chip dedicado del estudio.
 3. Reiniciar el servicio **no** vuelve a pedir QR: la sesión vive en
    `/data/wa.db` del volumen de Railway.
+4. El QR se renueva solo en el panel mientras está abierto. whatsmeow manda
+   el tiempo real de cada código (el primero puede durar 60 s; los siguientes
+   unos 20 s), y el panel lo reemplaza sin recargar.
+5. Si un cliente responde **BAJA** por WhatsApp, el servicio Go avisa al
+   webhook `WA_BAJA_WEBHOOK_URL` y se desactivan sus canales. El webhook está
+   protegido con `WA_SERVICIO_TOKEN`; no se llama desde el navegador.
 
 Riesgo asumido: `whatsmeow` no es la API oficial y un número puede ser
 bloqueado. Chip dedicado, opt-in, volumen bajo, pausas y un plan B con la API
@@ -94,6 +107,8 @@ npm run build
 ```
 
 La prueba de noticias usa la base de `.env` y limpia sus filas al terminar.
+Si no hay `DATABASE_URL`, las pruebas de cola/baja se omiten y las unitarias
+siguen corriendo (útil en CI o en un clon sin secretos).
 
 ## Registro de clientes
 
@@ -107,3 +122,13 @@ La prueba de noticias usa la base de `.env` y limpia sus filas al terminar.
   en `/panel` → Mi cuenta.
 - Una cuenta antigua sin teléfono puede seguir entrando y actualizarlo en Mi
   cuenta; la obligación se aplica a los perfiles nuevos.
+
+## Baja
+
+- El enlace del correo (`/baja?token=…`) **valida** el token con GET y recién
+  aplica la baja con POST. Así un escáner de enlaces o un prefetch del correo
+  no da de baja a nadie sin que la persona abra la página.
+- La baja por WhatsApp se procesa con la respuesta **BAJA** en el chat directo;
+  los mensajes de grupo se ignoran.
+- La fila no se borra: queda `activo=false` para no volver a importar a quien
+  ya pidió no recibir avisos.

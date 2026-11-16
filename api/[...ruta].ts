@@ -41,6 +41,7 @@ import rentaEjercicio from './_rutas/renta-ejercicio.js';
 import noticias from './_rutas/noticias.js';
 import suscripcion from './_rutas/suscripcion.js';
 import baja from './_rutas/baja.js';
+import whatsappBaja from './_rutas/whatsapp-baja.js';
 import adminNoticias from './_rutas/admin/noticias.js';
 import adminNoticiasEnviar from './_rutas/admin/noticias-enviar.js';
 import adminEnvios from './_rutas/admin/envios.js';
@@ -80,6 +81,7 @@ const RUTAS: Record<string, Handler> = {
   noticias,
   suscripcion,
   baja,
+  'whatsapp/baja': whatsappBaja,
   'admin/noticias': adminNoticias,
   'admin/noticias/enviar': adminNoticiasEnviar,
   'admin/envios': adminEnvios,

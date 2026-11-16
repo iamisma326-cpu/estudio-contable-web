@@ -73,8 +73,8 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
   const whatsappRaw = typeof body?.whatsapp === 'string' ? body.whatsapp.trim() : '';
   const whatsapp = normalizarWhatsapp(whatsappRaw || actual?.whatsapp || null);
 
-  if (canalEmail && !email) {
-    res.status(400).json({ ok: false, error: 'validation', fields: { email: 'Falta el correo.' } });
+  if (canalEmail && (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+    res.status(400).json({ ok: false, error: 'validation', fields: { email: 'Correo inválido.' } });
     return;
   }
   if (canalWhatsapp && !whatsapp) {
@@ -89,11 +89,11 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
   const activo = canalEmail || canalWhatsapp;
   const consentimiento = body?.consentimiento === true;
 
-  // Consentimiento nuevo cuando: se enciende WhatsApp por primera vez, o se
-  // reactiva una cuenta que estaba dada de baja. Marcar solo email en una
-  // cuenta ya activa no obliga a repetirlo.
+  // WhatsApp exige consentimiento explícito siempre (aunque la fila fuera
+  // sembrada con consentimiento de email); reactivar una cuenta dada de baja
+  // también. Marcar solo email en una cuenta ya activa no obliga a repetirlo.
   const requiereConsentimiento =
-    (canalWhatsapp && !actual?.canal_whatsapp) || (activo && !actual?.activo);
+    canalWhatsapp || (activo && !actual?.activo);
   if (requiereConsentimiento && !consentimiento) {
     res.status(400).json({
       ok: false,

@@ -516,7 +516,12 @@ export default function NoticiasPanel() {
                   <tr key={e.id}>
                     <td>{e.noticia}</td>
                     <td>
-                      <span className={styles.cellTitle}>{e.nombre || e.email || '—'}</span>
+                      <span className={styles.cellTitle}>
+                        {e.nombre || e.email || '—'}
+                        {e.prueba ? (
+                          <span className={`${styles.badge} ${styles.badgeNeutral}`}>Prueba</span>
+                        ) : null}
+                      </span>
                       <span className={styles.cellSub}>{e.destino}</span>
                     </td>
                     <td>{e.canal === 'email' ? 'Email' : 'WhatsApp'}</td>

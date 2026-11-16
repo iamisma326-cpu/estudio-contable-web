@@ -49,9 +49,10 @@ export default function AccountPanel({ me, onSignOut, onSave }: Props) {
       setCanalEmail(sub ? sub.canal_email : true);
       setCanalWhatsapp(sub ? sub.canal_whatsapp : false);
       setWhatsapp(sub?.whatsapp ?? me.profile?.telefono ?? '');
-      // No se premarca: si va a encender WhatsApp o reactivar la cuenta,
-      // debe aceptarlo explícitamente en esta pantalla.
-      setConsentimiento(false);
+      // Si WhatsApp ya estaba activo, la casilla aparece marcada para que
+      // guardar otros cambios no lo apague. Si se va a encender, empieza
+      // desmarcada y el usuario debe aceptarlo explícitamente.
+      setConsentimiento(Boolean(sub?.canal_whatsapp));
     })();
     return () => {
       cancelled = true;
@@ -67,7 +68,7 @@ export default function AccountPanel({ me, onSignOut, onSave }: Props) {
       return;
     }
     const requiereConsentimiento =
-      (canalWhatsapp && !suscripcion?.canal_whatsapp) ||
+      canalWhatsapp ||
       ((canalEmail || canalWhatsapp) && (!suscripcion || !suscripcion.activo));
     if (requiereConsentimiento && !consentimiento) {
       setAvisoStatus({

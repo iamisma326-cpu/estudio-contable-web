@@ -42,6 +42,7 @@ export interface Envio {
   email: string | null;
   canal: CanalAviso;
   destino: string;
+  prueba: boolean;
   estado: string;
   intentos: number;
   proveedor_id: string | null;

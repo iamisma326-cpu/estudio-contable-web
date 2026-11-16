@@ -16,10 +16,15 @@ export interface MensajeEmail {
   texto: string;
 }
 
+function limpiarAsunto(value: string): string {
+  // Un título con salto de línea no debe poder inyectar cabeceras SMTP.
+  return value.replace(/[\r\n]+/g, ' ').trim().slice(0, 180);
+}
+
 export function asuntoEmail(noticias: Noticia[]): string {
-  if (noticias.length === 1) return `SUNAT · ${noticias[0].titulo}`;
+  if (noticias.length === 1) return limpiarAsunto(`SUNAT · ${noticias[0].titulo}`);
   const { desde, hasta } = rangoSemana(noticias);
-  return `Resumen SUNAT · semana del ${desde} al ${hasta}`;
+  return limpiarAsunto(`Resumen SUNAT · semana del ${desde} al ${hasta}`);
 }
 
 function urlNoticia(noticia: Noticia): string {

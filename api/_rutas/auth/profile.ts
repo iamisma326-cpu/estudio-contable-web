@@ -89,26 +89,25 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
 
   // Suscripción: email activo desde el alta; WhatsApp solo con consentimiento
   // explícito. Si la cuenta ya existía, no se reactiva una baja ni se cambia
-  // un canal que el cliente ya había configurado.
-  if (telefono || !existente) {
-    await query(
-      `INSERT INTO public.suscripciones
-         (user_id, email, whatsapp, canal_email, canal_whatsapp, activo,
-          consentimiento_en, consentimiento_ip)
-       VALUES ($1, $2, $3, true, $4, true,
-               CASE WHEN $4 THEN now() ELSE NULL END,
-               CASE WHEN $4 THEN $5 ELSE NULL END)
-       ON CONFLICT (user_id) DO UPDATE
-         SET email             = COALESCE(EXCLUDED.email, public.suscripciones.email),
-             whatsapp          = COALESCE(EXCLUDED.whatsapp, public.suscripciones.whatsapp),
-             canal_whatsapp    = CASE WHEN $4 THEN true ELSE public.suscripciones.canal_whatsapp END,
-             activo            = CASE WHEN $4 THEN true ELSE public.suscripciones.activo END,
-             consentimiento_en = CASE WHEN $4 THEN now() ELSE public.suscripciones.consentimiento_en END,
-             consentimiento_ip = CASE WHEN $4 THEN $5 ELSE public.suscripciones.consentimiento_ip END,
-             updated_at        = now()`,
-      [user.id, user.email, telefono, avisosWhatsapp, clientIp(req)]
-    );
-  }
+  // un canal que el cliente ya había configurado. Se hace siempre para que
+  // una cuenta antigua sin fila de suscripción también sea alcanzable.
+  await query(
+    `INSERT INTO public.suscripciones
+       (user_id, email, whatsapp, canal_email, canal_whatsapp, activo,
+        consentimiento_en, consentimiento_ip)
+     VALUES ($1, $2, $3, true, $4, true,
+             CASE WHEN $4 THEN now() ELSE NULL END,
+             CASE WHEN $4 THEN $5 ELSE NULL END)
+     ON CONFLICT (user_id) DO UPDATE
+       SET email             = COALESCE(EXCLUDED.email, public.suscripciones.email),
+           whatsapp          = COALESCE(EXCLUDED.whatsapp, public.suscripciones.whatsapp),
+           canal_whatsapp    = CASE WHEN $4 THEN true ELSE public.suscripciones.canal_whatsapp END,
+           activo            = CASE WHEN $4 THEN true ELSE public.suscripciones.activo END,
+           consentimiento_en = CASE WHEN $4 THEN now() ELSE public.suscripciones.consentimiento_en END,
+           consentimiento_ip = CASE WHEN $4 THEN $5 ELSE public.suscripciones.consentimiento_ip END,
+           updated_at        = now()`,
+    [user.id, user.email, telefono, avisosWhatsapp, clientIp(req)]
+  );
 
   const profile = await queryOne(
     `SELECT empresa, ruc, telefono, notas, created_at

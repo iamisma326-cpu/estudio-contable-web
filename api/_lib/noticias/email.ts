@@ -33,6 +33,10 @@ function getTransporte(): ReturnType<typeof nodemailer.createTransport> {
     port: 465,
     secure: true,
     auth: { user, pass },
+    // Un SMTP colgado no debe consumir los 300 s del cron.
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
   });
   return transporte;
 }

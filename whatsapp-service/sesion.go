@@ -49,6 +49,7 @@ type Sesion struct {
 	log            waLog.Logger
 	qr             string
 	qrAt           time.Time
+	qrTTL          time.Duration
 	emparejando    bool
 	conectadoDesde time.Time
 	ultimoError    string
@@ -105,7 +106,7 @@ func NuevaSesion(ctx context.Context) (*Sesion, error) {
 }
 
 func (s *Sesion) evento(evt any) {
-	switch evt.(type) {
+	switch evt := evt.(type) {
 	case *events.Connected:
 		s.mu.Lock()
 		s.conectadoDesde = time.Now()
@@ -122,8 +123,52 @@ func (s *Sesion) evento(evt any) {
 		s.ultimoError = "WhatsApp cerró la sesión (dispositivo desvinculado)"
 		s.conectadoDesde = time.Time{}
 		s.qr = ""
+		s.emparejando = false
 		s.mu.Unlock()
+		// El store se borra en el cliente; hay que crear uno nuevo para que
+		// el admin pueda volver a vincular sin reiniciar el servicio.
+		go s.recrearClienteDespuesDeLogout()
+	case *events.Message:
+		s.procesarMensaje(evt)
 	}
+}
+
+// procesarMensaje solo atiende la baja por WhatsApp. Si el cliente responde
+// BAJA, se avisa a Vercel para desactivar su suscripción. Los mensajes de
+// grupo y los propios se ignoran: una baja solo puede pedirla el titular del
+// número desde su chat directo.
+func (s *Sesion) procesarMensaje(evt *events.Message) {
+	if evt == nil || evt.Message == nil || evt.Info.IsFromMe || evt.Info.IsGroup {
+		return
+	}
+
+	texto := evt.Message.GetConversation()
+	if texto == "" {
+		if extendido := evt.Message.GetExtendedTextMessage(); extendido != nil {
+			texto = extendido.GetText()
+		}
+	}
+
+	palabra := strings.Trim(strings.TrimSpace(texto), " .,;:!¡¿?\"'")
+	if !strings.EqualFold(palabra, "BAJA") {
+		return
+	}
+
+	// WhatsApp puede direccionar por teléfono (s.whatsapp.net) o por LID.
+	// Se prefiere el teléfono y, si el remitente viene como LID, se usa la
+	// dirección alternativa que sí contiene el número.
+	numero := ""
+	switch {
+	case evt.Info.Sender.Server == types.DefaultUserServer:
+		numero = evt.Info.Sender.User
+	case evt.Info.SenderAlt.Server == types.DefaultUserServer:
+		numero = evt.Info.SenderAlt.User
+	}
+	if numero == "" {
+		return
+	}
+	s.log.Infof("solicitud de baja recibida por WhatsApp")
+	go s.notificarBaja(numero)
 }
 
 func (s *Sesion) setError(err error) {
@@ -161,10 +206,18 @@ func (s *Sesion) Estado() Estado {
 	}
 }
 
+func (s *Sesion) qrVigenteLocked() bool {
+	ttl := s.qrTTL
+	if ttl <= 0 {
+		ttl = 20 * time.Second
+	}
+	return s.qr != "" && time.Since(s.qrAt) < ttl
+}
+
 func (s *Sesion) QR() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if s.qr == "" || time.Since(s.qrAt) > 2*time.Minute {
+	if !s.qrVigenteLocked() {
 		return ""
 	}
 	return s.qr
@@ -178,34 +231,43 @@ func (s *Sesion) Emparejar(ctx context.Context) (string, error) {
 		s.mu.Unlock()
 		return "", errYaConectado
 	}
-	if s.qr != "" && time.Since(s.qrAt) < 90*time.Second {
+	if s.qrVigenteLocked() {
 		qr := s.qr
 		s.mu.Unlock()
 		return qr, nil
 	}
 	if s.emparejando {
 		qr := s.qr
+		fresco := s.qrVigenteLocked()
 		s.mu.Unlock()
-		if qr != "" {
+		if fresco {
 			return qr, nil
 		}
 		return "", errors.New("el emparejamiento ya está en curso; espera unos segundos")
 	}
 	s.emparejando = true
 	s.ultimoError = ""
+	client := s.client
 	s.mu.Unlock()
 
-	canal, err := s.client.GetQRChannel(ctx)
+	// El consumidor del canal QR debe vivir más que esta petición HTTP: si
+	// usara el contexto del request, el panel dejaría de recibir los QR
+	// renovados en cuanto /pair respondiera. El canal se cierra solo al
+	// vincular, caducar o fallar.
+	qrCtx, cancelarQr := context.WithCancel(context.WithoutCancel(ctx))
+	canal, err := client.GetQRChannel(qrCtx)
 	if err != nil {
+		cancelarQr()
 		s.mu.Lock()
 		s.emparejando = false
 		s.mu.Unlock()
 		return "", fmt.Errorf("abrir canal QR: %w", err)
 	}
 
-	go s.consumirQR(ctx, canal)
+	go s.consumirQR(qrCtx, canal)
 
-	if err := s.client.Connect(); err != nil && !errors.Is(err, whatsmeow.ErrAlreadyConnected) {
+	if err := client.Connect(); err != nil && !errors.Is(err, whatsmeow.ErrAlreadyConnected) {
+		cancelarQr()
 		s.mu.Lock()
 		s.emparejando = false
 		s.ultimoError = err.Error()
@@ -215,7 +277,7 @@ func (s *Sesion) Emparejar(ctx context.Context) (string, error) {
 
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
-		if s.client.Store != nil && s.client.Store.ID != nil {
+		if client.Store != nil && client.Store.ID != nil {
 			return "", errYaConectado
 		}
 		if qr := s.QR(); qr != "" {
@@ -238,6 +300,11 @@ func (s *Sesion) consumirQR(ctx context.Context, canal <-chan whatsmeow.QRChanne
 			return
 		case item, ok := <-canal:
 			if !ok {
+				s.mu.Lock()
+				s.emparejando = false
+				s.qr = ""
+				s.qrTTL = 0
+				s.mu.Unlock()
 				return
 			}
 			if item.Event == "code" {
@@ -249,6 +316,11 @@ func (s *Sesion) consumirQR(ctx context.Context, canal <-chan whatsmeow.QRChanne
 				s.mu.Lock()
 				s.qr = png
 				s.qrAt = time.Now()
+				if item.Timeout > 0 {
+					s.qrTTL = item.Timeout
+				} else {
+					s.qrTTL = 20 * time.Second
+				}
 				s.mu.Unlock()
 				continue
 			}
@@ -257,6 +329,7 @@ func (s *Sesion) consumirQR(ctx context.Context, canal <-chan whatsmeow.QRChanne
 			case whatsmeow.QRChannelSuccess:
 				s.mu.Lock()
 				s.qr = ""
+				s.qrTTL = 0
 				s.emparejando = false
 				s.ultimoError = ""
 				s.mu.Unlock()
@@ -264,12 +337,18 @@ func (s *Sesion) consumirQR(ctx context.Context, canal <-chan whatsmeow.QRChanne
 				s.mu.Lock()
 				s.emparejando = false
 				s.qr = ""
+				s.qrTTL = 0
 				s.ultimoError = "el QR caducó sin escanearse"
 				s.mu.Unlock()
 				return
 			default:
 				if item.Event == "error" && item.Error != nil {
 					s.setError(item.Error)
+					s.mu.Lock()
+					s.qr = ""
+					s.emparejando = false
+					s.mu.Unlock()
+					return
 				}
 			}
 		}
@@ -349,6 +428,38 @@ func (s *Sesion) Desvincular(ctx context.Context) error {
 	s.ultimoError = ""
 	s.mu.Unlock()
 	return nil
+}
+
+func (s *Sesion) recrearClienteDespuesDeLogout() {
+	s.mu.RLock()
+	client := s.client
+	container := s.container
+	s.mu.RUnlock()
+
+	client.Disconnect()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if client.Store != nil {
+		_ = client.Store.Delete(ctx)
+	}
+
+	device, err := container.GetFirstDevice(ctx)
+	if err != nil {
+		s.setError(fmt.Errorf("preparar dispositivo tras logout: %w", err))
+		return
+	}
+	nuevo := whatsmeow.NewClient(device, s.log)
+	nuevo.AddEventHandler(s.evento)
+
+	s.mu.Lock()
+	// Si el admin ya inició otra vinculación, no pisar ese cliente.
+	if s.client == client {
+		s.client = nuevo
+		s.qr = ""
+		s.emparejando = false
+		s.conectadoDesde = time.Time{}
+	}
+	s.mu.Unlock()
 }
 
 func (s *Sesion) Cerrar() {

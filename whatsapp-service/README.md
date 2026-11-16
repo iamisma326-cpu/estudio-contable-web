@@ -15,6 +15,7 @@ de proxy con `X-Servicio-Token`.
 | `WA_SERVICIO_TOKEN` | Railway + Vercel | Token interno. Debe ser el mismo en los dos. |
 | `WA_DB_PATH` | Railway | `file:/data/wa.db` (SQLite en volumen). |
 | `WA_DB_URL` | Render | Cadena Postgres de Neon si no hay disco. |
+| `WA_BAJA_WEBHOOK_URL` | Railway | URL de Vercel para procesar la respuesta BAJA. |
 | `PORT` | Railway | Railway lo inyecta; por defecto 8080. |
 
 Usa **una** de las dos: si `WA_DB_URL` está definida, gana Postgres; si no,
@@ -26,7 +27,9 @@ SQLite en `WA_DB_PATH`.
 railway login
 railway init            # o railway link a un proyecto existente
 railway add --service whatsapp-service
-railway variables --set WA_SERVICIO_TOKEN=<aleatorio> --set WA_DB_PATH=/data/wa.db
+railway variables --set WA_SERVICIO_TOKEN=<aleatorio> \
+  --set WA_DB_PATH=/data/wa.db \
+  --set WA_BAJA_WEBHOOK_URL=https://estudio-contable-web-chi.vercel.app/api/whatsapp/baja
 railway volume add --mount-path /data
 railway up              # desde esta carpeta
 railway domain          # URL pública para WA_SERVICIO_URL en Vercel
@@ -54,6 +57,10 @@ Todos exigen `X-Servicio-Token` salvo `/health`.
 | `POST /pair` | Arranca el emparejamiento y devuelve el primer QR. |
 | `POST /send` | `{ "to": "51987654321", "texto": "…" }` → `{ id }`. |
 | `POST /logout` | Cierra la sesión y borra el dispositivo del store. |
+
+Si un cliente responde **BAJA** en un chat directo, el servicio llama a
+`WA_BAJA_WEBHOOK_URL` con `X-Servicio-Token` para desactivar su suscripción.
+Los mensajes de grupo se ignoran.
 
 ## Riesgo
 

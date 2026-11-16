@@ -2,8 +2,8 @@
  * Pestaña WhatsApp del admin.
  *
  * El navegador nunca habla con el servicio Go: pide el QR a
- * /api/admin/whatsapp/vincular (Vercel, requireAdmin) y consulta el estado
- * cada 3 s mientras el QR está en pantalla. El token interno no se expone.
+ * /api/admin/whatsapp/vincular (Vercel, requireAdmin) y renueva el QR cada
+ * 5 s mientras está en pantalla. El token interno no se expone.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -57,22 +57,27 @@ export default function WhatsAppPanel() {
     void consultar();
   }, [consultar]);
 
-  // Mientras hay QR, el código caduca a los ~20 s: se refresca el estado y,
-  // si hay un QR nuevo, se reemplaza sin que el admin haga nada.
+  // Mientras hay QR, el código caduca a los ~20 s. Se vuelve a pedir el par
+  // cada 5 s: el servicio devuelve el QR vigente o el nuevo que emitió
+  // whatsmeow, y el panel lo reemplaza sin que el admin haga nada.
   useEffect(() => {
     if (!qr) return;
     const id = window.setInterval(() => {
       void (async () => {
-        const res = await apiGet<EstadoResponse>('/api/admin/whatsapp/estado');
-        if (res.ok && res.data?.estado.conectado) {
-          setEstado(res.data.estado);
+        const res = await apiSend<QrResponse>('/api/admin/whatsapp/vincular', 'POST', {});
+        if (!res.ok || !res.data?.ok) return;
+        if (res.data.conectado) {
           setQr(null);
           setError(null);
+          await consultar();
+          return;
         }
+        const nuevo = comoImagen(res.data.qr);
+        if (nuevo) setQr(nuevo);
       })();
-    }, 3000);
+    }, 5000);
     return () => window.clearInterval(id);
-  }, [qr]);
+  }, [qr, consultar]);
 
   async function vincular() {
     setBusy(true);
@@ -154,9 +159,9 @@ export default function WhatsAppPanel() {
             type="button"
             className={styles.miniBtnDanger}
             onClick={() => void desvincular()}
-            disabled={busy || !conectado}
+            disabled={busy || (!conectado && !qr)}
           >
-            <Unlink size={14} /> Desvincular
+            <Unlink size={14} /> {qr ? 'Cancelar vinculación' : 'Desvincular'}
           </button>
           <button type="button" className={styles.miniBtn} onClick={() => void consultar()}>
             Actualizar estado
@@ -170,7 +175,7 @@ export default function WhatsAppPanel() {
               <p className={styles.cellTitle}>Escanea con WhatsApp</p>
               <p className={styles.cellSub}>
                 WhatsApp → Dispositivos vinculados → Vincular un dispositivo. El código
-                caduca en unos 20 segundos; si se vence, pulsa «Vincular número» otra vez.
+                caduca en unos 20–60 segundos y se renueva solo mientras esta pantalla esté abierta.
               </p>
               <p className={styles.muted}>
                 Usa un chip dedicado al estudio, no el número personal del dueño.

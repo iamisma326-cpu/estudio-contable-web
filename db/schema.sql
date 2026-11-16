@@ -329,6 +329,9 @@ CREATE TABLE IF NOT EXISTS public.envios (
   canal        text        NOT NULL CHECK (canal IN ('email', 'whatsapp')),
   destino      text        NOT NULL,
   lote         uuid,
+  -- true = «Enviar solo a mí»: no cuenta como envío real y no se omite por
+  -- el estado de la suscripción del admin.
+  prueba       boolean     NOT NULL DEFAULT false,
   -- 'pendiente' | 'enviado' | 'fallido' | 'omitido'
   estado       text        NOT NULL DEFAULT 'pendiente',
   intentos     integer     NOT NULL DEFAULT 0,
@@ -339,6 +342,10 @@ CREATE TABLE IF NOT EXISTS public.envios (
   -- Idempotencia: un reintento del cron no puede duplicar el envío.
   UNIQUE (noticia_id, user_id, canal)
 );
+
+-- Para instalaciones que ya tenían la tabla sin `prueba`.
+ALTER TABLE public.envios
+  ADD COLUMN IF NOT EXISTS prueba boolean NOT NULL DEFAULT false;
 
 CREATE INDEX IF NOT EXISTS envios_pendientes_idx
   ON public.envios (estado, created_at)

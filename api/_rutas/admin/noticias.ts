@@ -14,7 +14,7 @@ import { query, queryOne } from '../../_db/db.js';
 import type { ReqLike, ResLike } from '../../_auth/http.js';
 import { applyCors, methodNotAllowed, queryParam, readJsonBody } from '../../_auth/http.js';
 import { requireAdmin } from '../../_auth/guard.js';
-import { slugify, type Noticia } from '../../_lib/noticias/comun.js';
+import { esUuid, slugify, type Noticia } from '../../_lib/noticias/comun.js';
 
 const CATEGORIAS = new Set(['sunat', 'tributario', 'laboral', 'estudio']);
 const FUENTES = new Set(['manual', 'cronograma', 'renta-anual', 'noticias-sunat']);
@@ -71,9 +71,9 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
       fallidos: number;
     }>(
       `SELECT noticia_id,
-              count(*) FILTER (WHERE estado = 'enviado')::int   AS enviados,
-              count(*) FILTER (WHERE estado = 'pendiente')::int AS pendientes,
-              count(*) FILTER (WHERE estado = 'fallido')::int   AS fallidos
+              count(*) FILTER (WHERE estado = 'enviado' AND prueba = false)::int   AS enviados,
+              count(*) FILTER (WHERE estado = 'pendiente' AND prueba = false)::int AS pendientes,
+              count(*) FILTER (WHERE estado = 'fallido' AND prueba = false)::int   AS fallidos
          FROM public.envios
         GROUP BY noticia_id`
     );
@@ -148,19 +148,24 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
   if (req.method === 'PATCH') {
     const body = (await readJsonBody(req)) as Record<string, unknown> | null;
     const id = texto(body?.id);
-    if (!/^[0-9a-f-]{36}$/i.test(id)) {
+    if (!esUuid(id)) {
       res.status(400).json({ ok: false, error: 'invalid_id' });
       return;
     }
 
     const estado = texto(body?.estado) || null;
     const categoria = texto(body?.categoria) || null;
+    const fuente = texto(body?.fuente) || null;
     if (estado && !ESTADOS.has(estado)) {
       res.status(400).json({ ok: false, error: 'validation', fields: { estado: 'Estado inválido.' } });
       return;
     }
     if (categoria && !CATEGORIAS.has(categoria)) {
       res.status(400).json({ ok: false, error: 'validation', fields: { categoria: 'Categoría inválida.' } });
+      return;
+    }
+    if (fuente && !FUENTES.has(fuente)) {
+      res.status(400).json({ ok: false, error: 'validation', fields: { fuente: 'Fuente inválida.' } });
       return;
     }
 
@@ -188,7 +193,7 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
         typeof body?.resumen === 'string' ? body.resumen : null,
         typeof body?.cuerpo === 'string' ? body.cuerpo : null,
         categoria,
-        texto(body?.fuente) || null,
+        fuente,
         typeof body?.fuente_url === 'string' ? body.fuente_url.trim() || null : null,
         estado,
       ]
@@ -204,7 +209,7 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
 
   if (req.method === 'DELETE') {
     const id = queryParam(req, 'id') ?? '';
-    if (!/^[0-9a-f-]{36}$/i.test(id)) {
+    if (!esUuid(id)) {
       res.status(400).json({ ok: false, error: 'invalid_id' });
       return;
     }

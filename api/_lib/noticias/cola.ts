@@ -41,6 +41,7 @@ interface EnvioPendienteRow {
   canal: Canal;
   destino: string;
   lote: string | null;
+  prueba: boolean;
   slug: string;
   titulo: string;
   resumen: string;
@@ -108,6 +109,8 @@ export async function encolarNoticias(
   const lote = opciones.lote || randomUUID();
   const canalesValidos = Array.from(new Set(canales.filter(canalValido)));
   if (!canalesValidos.length) return { lote, filas: 0, destinatarios: 0 };
+  // Sin el admin explícito, «solo a mí» no debe degradar a un envío masivo.
+  if (opciones.soloMi && !opciones.admin) return { lote, filas: 0, destinatarios: 0 };
 
   const noticias = await query<{ id: string }>(
     `SELECT id FROM public.noticias
@@ -124,13 +127,14 @@ export async function encolarNoticias(
   }[] = [];
 
   if (opciones.soloMi && opciones.admin) {
-    const sub = await queryOne<{ whatsapp: string | null; email: string | null; baja_token: string }>(
-      `SELECT whatsapp, email, baja_token::text AS baja_token
+    const sub = await queryOne<{
+      whatsapp: string | null;
+      email: string | null;
+      canal_whatsapp: boolean;
+      baja_token: string;
+    }>(
+      `SELECT whatsapp, email, canal_whatsapp, baja_token::text AS baja_token
          FROM public.suscripciones WHERE user_id = $1 LIMIT 1`,
-      [opciones.admin.id]
-    );
-    const perfil = await queryOne<{ telefono: string | null }>(
-      'SELECT telefono FROM public.profiles WHERE user_id = $1 LIMIT 1',
       [opciones.admin.id]
     );
     // EMAIL_TEST_TO permite que «Enviar solo a mí» llegue a la bandeja que
@@ -141,7 +145,9 @@ export async function encolarNoticias(
       {
         user_id: opciones.admin.id,
         email: destinoPrueba || sub?.email || opciones.admin.email,
-        whatsapp: sub?.whatsapp || perfil?.telefono || null,
+        // «Solo a mí» también respeta el opt-in de WhatsApp: tener teléfono
+        // en el perfil no es consentimiento para escribir por ese canal.
+        whatsapp: sub?.canal_whatsapp ? sub.whatsapp : null,
         baja_token: sub?.baja_token || null,
       },
     ];
@@ -168,11 +174,11 @@ export async function encolarNoticias(
         if (!address) continue;
 
         const inserted = await query<{ id: string }>(
-          `INSERT INTO public.envios (noticia_id, user_id, canal, destino, lote)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO public.envios (noticia_id, user_id, canal, destino, lote, prueba)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (noticia_id, user_id, canal) DO NOTHING
            RETURNING id`,
-          [noticia.id, destino.user_id, canal, address, lote]
+          [noticia.id, destino.user_id, canal, address, lote, Boolean(opciones.soloMi)]
         );
         if (inserted.length) {
           filas += 1;
@@ -224,6 +230,36 @@ export async function procesarEnvios(opciones: {
   lote?: string;
   limite?: number;
 } = {}): Promise<ResultadoEnvio> {
+  // Si una noticia se archivó después de encolarse, no debe salir. Se marca
+  // la fila como omitida para que no vuelva a aparecer en cada cron.
+  const omitidasPorEstado = await query<{ id: string }>(
+    `UPDATE public.envios e
+        SET estado = 'omitido',
+            error = 'La noticia ya no está publicada.'
+       FROM public.noticias n
+      WHERE e.noticia_id = n.id
+        AND e.estado = 'pendiente'
+        AND n.estado <> 'publicada'
+      RETURNING e.id`
+  );
+
+  // Si el cliente se dio de baja o apagó el canal después de encolar, no se
+  // le escribe aunque la fila ya existiera. Los envíos de prueba («solo a
+  // mí») quedan fuera: son una acción manual del admin, no una suscripción.
+  const omitidasPorSuscripcion = await query<{ id: string }>(
+    `UPDATE public.envios e
+        SET estado = 'omitido',
+            error = 'El destinatario ya no tiene ese canal activo.'
+       FROM public.suscripciones s
+      WHERE e.user_id = s.user_id
+        AND e.estado = 'pendiente'
+        AND e.prueba = false
+        AND (s.activo = false
+             OR (e.canal = 'email' AND s.canal_email = false)
+             OR (e.canal = 'whatsapp' AND s.canal_whatsapp = false))
+      RETURNING e.id`
+  );
+
   const limite = Math.min(opciones.limite ?? LIMITE_POR_EJECUCION, LIMITE_POR_EJECUCION);
   const params: unknown[] = [];
   let filtroLote = '';
@@ -240,6 +276,7 @@ export async function procesarEnvios(opciones: {
             e.canal,
             e.destino,
             e.lote::text,
+            e.prueba,
             n.slug, n.titulo, n.resumen, n.cuerpo, n.categoria, n.fuente,
             n.fuente_url, n.estado, n.publicada_en, n.created_at, n.updated_at,
             s.baja_token::text AS baja_token
@@ -258,7 +295,7 @@ export async function procesarEnvios(opciones: {
     grupos: 0,
     enviados: 0,
     fallidos: 0,
-    omitidos: 0,
+    omitidos: omitidasPorEstado.length + omitidasPorSuscripcion.length,
     errores: [],
   };
   if (!pendientes.length) return resultado;
@@ -340,9 +377,13 @@ export async function procesarEnvios(opciones: {
 }
 
 /**
- * Digest del lunes: publica en un solo mensaje lo publicado y nunca enviado
- * en los últimos 7 días. No toca noticias que ya tienen fila (enviada,
- * pendiente o fallida): así un reintento no reabre lo ya decidido.
+ * Digest del lunes: publica en un solo mensaje lo publicado en los últimos
+ * 7 días que aún no haya llegado a algún suscriptor.
+ *
+ * No se filtra por «no tiene ninguna fila» porque «Enviar solo a mí» crea una
+ * fila para el admin: si se usara ese filtro, una noticia vista en modo prueba
+ * nunca llegaría al resto de clientes. `encolarNoticias` rellena solo las
+ * combinaciones que faltan y el UNIQUE evita duplicados.
  */
 export async function programarDigest(): Promise<{
   noticias: number;
@@ -355,7 +396,6 @@ export async function programarDigest(): Promise<{
       WHERE n.estado = 'publicada'
         AND n.publicada_en IS NOT NULL
         AND n.publicada_en >= now() - interval '7 days'
-        AND NOT EXISTS (SELECT 1 FROM public.envios e WHERE e.noticia_id = n.id)
       ORDER BY n.publicada_en`
   );
 

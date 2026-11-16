@@ -14,7 +14,7 @@ import type { ReqLike, ResLike } from '../../_auth/http.js';
 import { applyCors, methodNotAllowed, readJsonBody } from '../../_auth/http.js';
 import { requireAdmin } from '../../_auth/guard.js';
 import { encolarNoticias, procesarEnvios } from '../../_lib/noticias/cola.js';
-import type { Canal } from '../../_lib/noticias/comun.js';
+import { esUuid, type Canal } from '../../_lib/noticias/comun.js';
 
 function idsDelBody(body: Record<string, unknown> | null): string[] {
   const raw = body?.ids ?? body?.id;
@@ -22,7 +22,7 @@ function idsDelBody(body: Record<string, unknown> | null): string[] {
   return Array.from(
     new Set(
       valores.filter(
-        (v): v is string => typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(v)
+        (v): v is string => esUuid(v)
       )
     )
   );
@@ -71,7 +71,9 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     [ids]
   );
   const noPublicadas = publicadas.filter((n) => n.estado !== 'publicada');
-  if (!publicadas.length || noPublicadas.length) {
+  const encontradas = new Set(publicadas.map((n) => n.id));
+  const faltantes = ids.filter((id) => !encontradas.has(id));
+  if (!publicadas.length || noPublicadas.length || faltantes.length) {
     res.status(409).json({
       ok: false,
       error: 'noticia_no_publicada',

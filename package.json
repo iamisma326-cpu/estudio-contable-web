@@ -34,7 +34,7 @@
     "test:renta-anual": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-renta-anual.ts",
     "test:renta-ejercicio": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-renta-ejercicio.ts",
     "test:fecha-iso": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-fecha-iso.ts",
-    "test:noticias": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-noticias.ts"
+    "test:noticias": "node --env-file-if-exists=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-noticias.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",

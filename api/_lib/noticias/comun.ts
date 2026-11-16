@@ -71,6 +71,14 @@ export function hashNormalizado(value: unknown): string {
   return createHash('sha256').update(jsonEstable(value)).digest('hex');
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** UUID v1-v5 válido; evita mandar basura a un cast de Postgres y recibir 500. */
+export function esUuid(value: string | null | undefined): value is string {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
+
 export function esLunesLima(): boolean {
   // getDay() en el Date que devuelve todayInLima(): 1 = lunes.
   return todayInLima().getDay() === 1;
