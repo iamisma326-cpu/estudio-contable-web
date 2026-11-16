@@ -31,7 +31,7 @@ export default function RegisterPage() {
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [avisosWhatsapp, setAvisosWhatsapp] = useState(false);
+  const [avisosNoticias, setAvisosNoticias] = useState(false);
   const [empresa, setEmpresa] = useState('');
   const [ruc, setRuc] = useState('');
   const [password, setPassword] = useState('');
@@ -86,7 +86,7 @@ export default function RegisterPage() {
         empresa: empresa.trim(),
         ruc: ruc.replace(/\D/g, ''),
         telefono: normalizarTelefono(telefono),
-        avisos_whatsapp: avisosWhatsapp,
+        avisos_noticias: avisosNoticias,
       });
 
       if (!perfil.ok) {
@@ -164,20 +164,20 @@ export default function RegisterPage() {
               placeholder="+51 999 999 999"
             />
             <span className={styles.hint}>
-              Lo usamos para avisos tributarios y para contactarte por el estudio.
+              Lo usamos para contactarte y, si lo aceptas, para enviarte las noticias.
             </span>
           </label>
 
           <label className={styles.check}>
             <input
               type="checkbox"
-              checked={avisosWhatsapp}
-              onChange={(e) => setAvisosWhatsapp(e.target.checked)}
+              checked={avisosNoticias}
+              onChange={(e) => setAvisosNoticias(e.target.checked)}
               disabled={submitting}
             />
             <span>
-              Acepto recibir también avisos por WhatsApp a este número. Puedo darme
-              de baja cuando quiera.
+              Acepto recibir las noticias y avisos del estudio por email y WhatsApp.
+              Puedo activarlo o desactivarlo después desde «Mi cuenta».
             </span>
           </label>
 

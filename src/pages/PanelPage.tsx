@@ -18,6 +18,7 @@ import LibraryPanel from '../components/panel/LibraryPanel';
 import CalendarPanel from '../components/panel/CalendarPanel';
 import ToolsPanel from '../components/panel/ToolsPanel';
 import GuidePanel from '../components/panel/GuidePanel';
+import NotificacionesPanel from '../components/panel/NotificacionesPanel';
 import AccountPanel from '../components/panel/AccountPanel';
 import { PANEL_TABS, DEFAULT_TAB, isPanelTab } from '../components/panel/tabs';
 import type { PanelTab } from '../components/panel/tabs';
@@ -98,6 +99,7 @@ export default function PanelPage() {
         {tab === 'calendario' && <CalendarPanel />}
         {tab === 'herramientas' && <ToolsPanel />}
         {tab === 'guia' && <GuidePanel />}
+        {tab === 'notificaciones' && <NotificacionesPanel />}
         {tab === 'cuenta' && <AccountPanel me={me} onSignOut={logout} onSave={refresh} />}
       </div>
     </section>

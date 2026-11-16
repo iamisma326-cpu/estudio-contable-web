@@ -758,6 +758,36 @@
   background: rgba(131, 44, 74, 0.08);
 }
 
+
+.noticeChannels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.channelTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.channelOn {
+  color: var(--color-accent);
+  background: var(--color-accent-bg);
+}
+
+.noticeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 4px;
+}
+
 /* ===== Responsive ===== */
 
 @media (max-width: 640px) {

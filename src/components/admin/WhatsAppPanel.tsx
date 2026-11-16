@@ -189,12 +189,12 @@ export default function WhatsAppPanel() {
         <h2 className={styles.panelTitle}>Qué hace este servicio</h2>
         <ul className={styles.list}>
           <li className={styles.listItem}>
-            <span className={styles.listTitle}>No envía nada por su cuenta</span>
-            <span className={styles.listMeta}>Solo atiende los envíos que encola el panel o el cron.</span>
+            <span className={styles.listTitle}>Envía solo cuando tú lo pides</span>
+            <span className={styles.listMeta}>No manda mensajes por su cuenta. Se activa desde Noticias.</span>
           </li>
           <li className={styles.listItem}>
-            <span className={styles.listTitle}>Solo a suscriptores con opt-in</span>
-            <span className={styles.listMeta}>La preferencia se guarda en «Mi cuenta» de cada cliente.</span>
+            <span className={styles.listTitle}>Solo a quienes aceptaron</span>
+            <span className={styles.listMeta}>El cliente acepta al registrarse y puede cambiarlo en «Mi cuenta».</span>
           </li>
           <li className={styles.listItem}>
             <span className={styles.listTitle}>Riesgo de ban</span>

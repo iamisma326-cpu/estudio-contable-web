@@ -7,7 +7,6 @@
  */
 
 import { createHash } from 'node:crypto';
-import { todayInLima } from '../../../src/data/sunatSchedule.js';
 
 export type Canal = 'email' | 'whatsapp';
 export type EstadoNoticia = 'borrador' | 'publicada' | 'archivada';
@@ -77,11 +76,6 @@ const UUID_RE =
 /** UUID v1-v5 válido; evita mandar basura a un cast de Postgres y recibir 500. */
 export function esUuid(value: string | null | undefined): value is string {
   return typeof value === 'string' && UUID_RE.test(value);
-}
-
-export function esLunesLima(): boolean {
-  // getDay() en el Date que devuelve todayInLima(): 1 = lunes.
-  return todayInLima().getDay() === 1;
 }
 
 /** Fecha larga en español para asuntos y copetes. */

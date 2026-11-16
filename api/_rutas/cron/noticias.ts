@@ -1,11 +1,11 @@
 /**
  * GET /api/cron/noticias
  *
- * Lo llama el cron de Vercel una vez al día (12:00 UTC = 07:00 Lima).
+ * Mantenimiento manual. NO está programado en Vercel y NO envía el digest:
+ * los avisos salen solo cuando el admin pulsa «Publicar y enviar».
  *
- *   1. Detecta cambios en SUNAT y, si hay, crea BORRADORES.
- *   2. Reintenta envíos pendientes.
- *   3. Si es lunes, arma y envía el digest de lo publicado y no enviado.
+ *   1. Detecta cambios en SUNAT y crea BORRADORES para revisión.
+ *   2. Reintenta envíos pendientes (si el admin los dejó a medias).
  *
  * La URL es pública, así que sin `Authorization: Bearer ${CRON_SECRET}`
  * responde 401 y no hace trabajo. No se añade ninguna función serverless:
@@ -16,8 +16,8 @@ import { timingSafeEqual } from 'node:crypto';
 import type { ReqLike, ResLike } from '../../_auth/http.js';
 import { applyCors, methodNotAllowed } from '../../_auth/http.js';
 import { detectarCambios } from '../../_lib/noticias/detector.js';
-import { procesarEnvios, programarDigest } from '../../_lib/noticias/cola.js';
-import { esLunesLima, mensajeError } from '../../_lib/noticias/comun.js';
+import { procesarEnvios } from '../../_lib/noticias/cola.js';
+import { mensajeError } from '../../_lib/noticias/comun.js';
 
 function autorizado(req: ReqLike): boolean {
   const secret = process.env.CRON_SECRET;
@@ -73,23 +73,11 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     errores.push(`reintentos: ${mensajeError(error)}`);
   }
 
-  const lunes = esLunesLima();
-  let digest: Awaited<ReturnType<typeof programarDigest>> | null = null;
-  if (lunes) {
-    try {
-      digest = await programarDigest();
-    } catch (error) {
-      errores.push(`digest: ${mensajeError(error)}`);
-    }
-  }
-
   res.status(200).json({
     ok: errores.length === 0,
     ahora: new Date().toISOString(),
-    es_lunes: lunes,
     deteccion,
     reintentos,
-    digest,
     errores,
     ms: Date.now() - iniciado,
   });

@@ -39,6 +39,7 @@ import liquidacion from './_rutas/liquidacion.js';
 import libro from './_rutas/libro.js';
 import rentaEjercicio from './_rutas/renta-ejercicio.js';
 import noticias from './_rutas/noticias.js';
+import noticiasNotificaciones from './_rutas/noticias-notificaciones.js';
 import suscripcion from './_rutas/suscripcion.js';
 import baja from './_rutas/baja.js';
 import whatsappBaja from './_rutas/whatsapp-baja.js';
@@ -79,6 +80,7 @@ const RUTAS: Record<string, Handler> = {
   'renta-ejercicio': rentaEjercicio,
   // Noticias y avisos automáticos (docs/PLAN-NOTICIAS.md)
   noticias,
+  'noticias/notificaciones': noticiasNotificaciones,
   suscripcion,
   baja,
   'whatsapp/baja': whatsappBaja,

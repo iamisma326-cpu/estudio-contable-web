@@ -12,6 +12,7 @@ export const PANEL_TABS = [
   { id: 'calendario', label: 'Calendario' },
   { id: 'herramientas', label: 'Herramientas' },
   { id: 'guia', label: 'Guía y glosario' },
+  { id: 'notificaciones', label: 'Notificaciones' },
   { id: 'cuenta', label: 'Mi cuenta' },
 ] as const;
 

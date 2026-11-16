@@ -3,7 +3,7 @@
  *
  * El detector de SUNAT solo crea BORRADORES. Desde aquí un humano corrige el
  * título y el resumen, publica y decide a quién y por qué canal se envía.
- * Nada sale sin esta decisión (salvo el digest del lunes con lo ya publicado).
+ * Nada sale sin esta decisión: no hay envío automático ni digest programado.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -74,7 +74,7 @@ export default function NoticiasPanel() {
   const [vista, setVista] = useState<'email' | 'whatsapp'>('email');
   const [canales, setCanales] = useState<Record<CanalAviso, boolean>>({
     email: true,
-    whatsapp: false,
+    whatsapp: true,
   });
   const [soloMi, setSoloMi] = useState(false);
 
@@ -259,8 +259,9 @@ export default function NoticiasPanel() {
         <div>
           <h1 className={styles.sectionTitle}>Noticias y avisos</h1>
           <p className={styles.sectionLead}>
-            Lo que detecta SUNAT entra como borrador. Corrige, publica y elige si sale
-            por email, por WhatsApp o por los dos.
+            Corrige la noticia y pulsa «Publicar y enviar ahora». Sale a todos los
+            clientes que aceptaron recibir avisos, por email y WhatsApp. No hay
+            envíos automáticos.
           </p>
         </div>
       </header>
@@ -434,6 +435,11 @@ export default function NoticiasPanel() {
           </div>
         </div>
 
+        <p className={styles.muted}>
+          Se envía solo a quienes aceptaron en el registro. WhatsApp requiere que el
+          número del estudio esté vinculado en la pestaña «WhatsApp».
+        </p>
+
         {visibles.length === 0 ? (
           <p className={styles.muted}>No hay noticias con ese filtro.</p>
         ) : (
@@ -499,14 +505,6 @@ export default function NoticiasPanel() {
                       >
                         <Send size={14} /> {soloMi ? 'Enviar solo a mí' : 'Publicar y enviar ahora'}
                       </button>
-                      <button
-                        type="button"
-                        className={styles.miniBtn}
-                        disabled={noticia.estado !== 'publicada' || busy === noticia.id}
-                        onClick={() => void enviar(noticia, { soloMi, modo: 'cola' })}
-                      >
-                        Encolar para el cron
-                      </button>
                     </div>
                   </div>
                 </article>
@@ -516,51 +514,6 @@ export default function NoticiasPanel() {
         )}
       </section>
 
-      <section className={styles.panel}>
-        <h2 className={styles.panelTitle}>Últimos envíos</h2>
-        {!envios?.envios.length ? (
-          <p className={styles.muted}>Todavía no se ha enviado ninguna noticia.</p>
-        ) : (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Noticia</th>
-                  <th>Destinatario</th>
-                  <th>Canal</th>
-                  <th>Estado</th>
-                  <th>Intentos</th>
-                  <th>Error</th>
-                </tr>
-              </thead>
-              <tbody>
-                {envios.envios.slice(0, 40).map((e) => (
-                  <tr key={e.id}>
-                    <td>{e.noticia}</td>
-                    <td>
-                      <span className={styles.cellTitle}>
-                        {e.nombre || e.email || '—'}
-                        {e.prueba ? (
-                          <span className={`${styles.badge} ${styles.badgeNeutral}`}>Prueba</span>
-                        ) : null}
-                      </span>
-                      <span className={styles.cellSub}>{e.destino}</span>
-                    </td>
-                    <td>{e.canal === 'email' ? 'Email' : 'WhatsApp'}</td>
-                    <td>
-                      <span className={`${styles.badge} ${e.estado === 'enviado' ? '' : styles.badgeNeutral}`}>
-                        {e.estado}
-                      </span>
-                    </td>
-                    <td>{e.intentos}</td>
-                    <td className={styles.cellSub}>{e.error || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </div>
   );
 }

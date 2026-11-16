@@ -228,6 +228,8 @@ function agrupar(rows: EnvioPendienteRow[]): Map<string, EnvioPendienteRow[]> {
  */
 export async function procesarEnvios(opciones: {
   lote?: string;
+  noticiaIds?: string[];
+  canales?: Canal[];
   limite?: number;
 } = {}): Promise<ResultadoEnvio> {
   // Si una noticia se archivó después de encolarse, no debe salir. Se marca
@@ -267,6 +269,16 @@ export async function procesarEnvios(opciones: {
     params.push(opciones.lote);
     filtroLote = `AND e.lote = $${params.length}::uuid`;
   }
+  let filtroNoticias = '';
+  if (opciones.noticiaIds?.length) {
+    params.push(opciones.noticiaIds);
+    filtroNoticias = `AND e.noticia_id = ANY($${params.length}::uuid[])`;
+  }
+  let filtroCanales = '';
+  if (opciones.canales?.length) {
+    params.push(opciones.canales);
+    filtroCanales = `AND e.canal = ANY($${params.length}::text[])`;
+  }
   params.push(limite);
 
   const pendientes = await query<EnvioPendienteRow>(
@@ -286,6 +298,8 @@ export async function procesarEnvios(opciones: {
       WHERE e.estado = 'pendiente'
         AND e.intentos < ${MAX_INTENTOS}
         ${filtroLote}
+        ${filtroNoticias}
+        ${filtroCanales}
       ORDER BY e.created_at, n.publicada_en NULLS LAST
       LIMIT $${params.length}`,
     params
@@ -374,41 +388,4 @@ export async function procesarEnvios(opciones: {
   }
 
   return resultado;
-}
-
-/**
- * Digest del lunes: publica en un solo mensaje lo publicado en los últimos
- * 7 días que aún no haya llegado a algún suscriptor.
- *
- * No se filtra por «no tiene ninguna fila» porque «Enviar solo a mí» crea una
- * fila para el admin: si se usara ese filtro, una noticia vista en modo prueba
- * nunca llegaría al resto de clientes. `encolarNoticias` rellena solo las
- * combinaciones que faltan y el UNIQUE evita duplicados.
- */
-export async function programarDigest(): Promise<{
-  noticias: number;
-  lote: string | null;
-  envios: ResultadoEnvio | null;
-}> {
-  const noticias = await query<{ id: string }>(
-    `SELECT n.id
-       FROM public.noticias n
-      WHERE n.estado = 'publicada'
-        AND n.publicada_en IS NOT NULL
-        AND n.publicada_en >= now() - interval '7 days'
-      ORDER BY n.publicada_en`
-  );
-
-  if (!noticias.length) return { noticias: 0, lote: null, envios: null };
-
-  const encolado = await encolarNoticias(
-    noticias.map((n) => n.id),
-    ['email', 'whatsapp'],
-    { lote: randomUUID() }
-  );
-
-  if (!encolado.filas) return { noticias: noticias.length, lote: encolado.lote, envios: null };
-
-  const envios = await procesarEnvios({ lote: encolado.lote });
-  return { noticias: noticias.length, lote: encolado.lote, envios };
 }

@@ -1,7 +1,11 @@
 # Plan — Avisos automáticos de noticias por email y WhatsApp
 
-> **Estado:** implementado (v1). La operación está en
+> **Estado:** implementado (v1, simplificado). La operación está en
 > [`NOTICIAS-OPERACION.md`](./NOTICIAS-OPERACION.md).
+> **Actualización (16 nov 2026):** se desactivó el digest/cron automático y el
+> segundo opt-in. La aceptación del registro activa email + WhatsApp y el
+> admin envía manualmente con «Publicar y enviar ahora». El cliente ve el
+> historial en su pestaña **Notificaciones**.
 > **Fecha:** 15 de noviembre de 2026
 > **Alcance:** intranet de Sánchez Delgado & Asociados (`estudio-contable-web`)
 > **Decisión que gobierna el documento:** las noticias las revisa una persona
@@ -300,7 +304,7 @@ Todos entran en `api/[...ruta].ts` → `RUTAS`. Ninguna función nueva.
 | `POST /api/suscripcion` | sesión | el cliente elige canal, teléfono y consentimiento |
 | `GET /api/baja?token=` | público | valida el token sin modificar nada (anti-prefetch) |
 | `POST /api/baja` | público | aplica la baja desde el enlace del email |
-| `GET /api/cron/noticias` | `CRON_SECRET` | detector + reintentos + digest del lunes |
+| `GET /api/cron/noticias` | `CRON_SECRET` | detector + reintentos manuales (sin digest) |
 
 Detalles que importan:
 

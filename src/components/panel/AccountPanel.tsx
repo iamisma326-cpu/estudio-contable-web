@@ -29,13 +29,13 @@ export default function AccountPanel({ me, onSignOut, onSave }: Props) {
   const [status, setStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Avisos del estudio (tabla `suscripciones`). El email viene marcado por
-  // defecto para clientes existentes; WhatsApp exige número y consentimiento.
+  // Avisos del estudio (tabla `suscripciones`). La aceptación del registro
+  // activa ambos canales; aquí el cliente puede volver a activarlos o
+  // desactivarlos. Marcar un canal es el consentimiento.
   const [suscripcion, setSuscripcion] = useState<Suscripcion | null>(null);
-  const [canalEmail, setCanalEmail] = useState(true);
+  const [canalEmail, setCanalEmail] = useState(false);
   const [canalWhatsapp, setCanalWhatsapp] = useState(false);
   const [whatsapp, setWhatsapp] = useState(me.profile?.telefono ?? '');
-  const [consentimiento, setConsentimiento] = useState(false);
   const [avisoStatus, setAvisoStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [avisoSaving, setAvisoSaving] = useState(false);
 
@@ -46,13 +46,9 @@ export default function AccountPanel({ me, onSignOut, onSave }: Props) {
       if (cancelled || !res.ok || !res.data) return;
       const sub = res.data.suscripcion;
       setSuscripcion(sub);
-      setCanalEmail(sub ? sub.canal_email : true);
+      setCanalEmail(sub ? sub.canal_email : false);
       setCanalWhatsapp(sub ? sub.canal_whatsapp : false);
       setWhatsapp(sub?.whatsapp ?? me.profile?.telefono ?? '');
-      // Si WhatsApp ya estaba activo, la casilla aparece marcada para que
-      // guardar otros cambios no lo apague. Si se va a encender, empieza
-      // desmarcada y el usuario debe aceptarlo explícitamente.
-      setConsentimiento(Boolean(sub?.canal_whatsapp));
     })();
     return () => {
       cancelled = true;
@@ -67,23 +63,14 @@ export default function AccountPanel({ me, onSignOut, onSave }: Props) {
       setAvisoStatus({ kind: 'error', text: 'Escribe el número de WhatsApp con prefijo o 9 dígitos.' });
       return;
     }
-    const requiereConsentimiento =
-      canalWhatsapp ||
-      ((canalEmail || canalWhatsapp) && (!suscripcion || !suscripcion.activo));
-    if (requiereConsentimiento && !consentimiento) {
-      setAvisoStatus({
-        kind: 'error',
-        text: 'Marca la casilla de consentimiento para activar los avisos.',
-      });
-      return;
-    }
-
+    const activo = canalEmail || canalWhatsapp;
     setAvisoSaving(true);
     const res = await apiSend<{ suscripcion: Suscripcion }>('/api/suscripcion', 'POST', {
       canal_email: canalEmail,
       canal_whatsapp: canalWhatsapp,
       whatsapp: whatsapp.trim(),
-      consentimiento,
+      // Marcar un canal es la aceptación; no hay una casilla extra.
+      consentimiento: activo,
     });
     setAvisoSaving(false);
 
@@ -280,22 +267,11 @@ export default function AccountPanel({ me, onSignOut, onSave }: Props) {
             </label>
           )}
 
-          <label className={styles.field}>
-            <span className={styles.label}>
-              <input
-                type="checkbox"
-                checked={consentimiento}
-                onChange={(e) => setConsentimiento(e.target.checked)}
-                disabled={avisoSaving}
-              />{' '}
-              Acepto recibir avisos por los canales marcados
-              {canalWhatsapp && whatsapp.trim() ? ` al número ${whatsapp.trim()}` : ''}.
-            </span>
-            <span className={styles.panelNote}>
-              Puedes darte de baja cuando quieras. Guardamos la fecha de tu aceptación
-              (Ley 29733).
-            </span>
-          </label>
+          <p className={styles.panelNote}>
+            Al marcar un canal aceptas recibir las noticias y avisos del estudio.
+            Puedes desmarcarlos cuando quieras; guardamos la fecha de tu aceptación
+            (Ley 29733).
+          </p>
 
           {avisoStatus && (
             <p

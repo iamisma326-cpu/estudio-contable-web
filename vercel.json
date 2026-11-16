@@ -3,12 +3,6 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "crons": [
-    {
-      "path": "/api/cron/noticias",
-      "schedule": "0 12 * * *"
-    }
-  ],
   "installCommand": "npm ci",
   "rewrites": [
     {

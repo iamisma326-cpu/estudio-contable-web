@@ -120,3 +120,23 @@ export interface FeedNoticia {
   fuente_url: string | null;
   publicada_en: string | null;
 }
+
+export interface Notificacion {
+  noticia_id: string;
+  slug: string;
+  titulo: string;
+  resumen: string;
+  categoria: CategoriaNoticia;
+  fuente: string;
+  fuente_url: string | null;
+  estado: EstadoNoticia;
+  publicada_en: string | null;
+  email: boolean;
+  whatsapp: boolean;
+  enviado_en: string | null;
+}
+
+export interface NotificacionesResponse {
+  ok: boolean;
+  notificaciones: Notificacion[];
+}

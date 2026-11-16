@@ -10,12 +10,12 @@ revisar antes de una demo.
 |---|---|
 | Tablas `noticias`, `suscripciones`, `envios`, `fuente_snapshots` | `db/schema.sql` |
 | Detector de cronogramas por hash → borrador | `api/_lib/noticias/detector.ts` |
-| Cola idempotente + digest del lunes | `api/_lib/noticias/cola.ts` |
+| Cola idempotente (envío manual y reintentos) | `api/_lib/noticias/cola.ts` |
 | Email Gmail (o Resend) | `api/_lib/noticias/email.ts` |
 | WhatsApp contra el servicio Go | `api/_lib/noticias/whatsapp.ts` |
 | Rutas admin, feed, suscripción, baja y cron | `api/_rutas/` |
 | CRM de noticias y QR | `src/components/admin/NoticiasPanel.tsx`, `WhatsAppPanel.tsx` |
-| Preferencias del cliente y baja pública | `AccountPanel.tsx`, `BajaPage.tsx` |
+| Preferencias del cliente, baja pública y notificaciones | `AccountPanel.tsx`, `BajaPage.tsx`, `NotificacionesPanel.tsx` |
 | Servicio Go `whatsmeow` | `whatsapp-service/` |
 
 Ninguna función serverless nueva: todo entra por `api/[...ruta].ts`.
@@ -58,28 +58,20 @@ con una cadena Postgres de Neon. Si está definida, gana sobre `WA_DB_PATH`.
 
 ## Envío
 
-- **Manual**: `/admin` → Noticias → «Publicar y enviar ahora». Con «Enviar
-  solo a mí» se enseña el resultado sin escribirle a un cliente. Si existe
-  `EMAIL_TEST_TO`, ese botón usa esa dirección en vez del correo del admin.
-- **Cola**: «Encolar para el cron» deja las filas pendientes; el cron las
-  procesa en la siguiente pasada.
-- **Digest**: el cron de las 12:00 UTC (07:00 Lima) detecta cambios y, si es
-  lunes, manda en **un solo mensaje** lo publicado en 7 días que aún no haya
-  llegado a algún suscriptor. «Enviar solo a mí» no bloquea el envío al resto:
-  la clave única solo evita repetirle el mensaje a quien ya lo recibió.
-- **Reintentos**: hasta 5 intentos con la misma fila. La clave única
-  `(noticia_id, user_id, canal)` impide duplicados.
+- **Manual y único camino**: `/admin` → Noticias → «Publicar y enviar ahora».
+  Publica y manda a todos los clientes que aceptaron recibir avisos, por email
+  y WhatsApp. No hay digest ni envío automático programado.
+- **Prueba**: «Enviar solo a mí» se guarda con `prueba=true`; no cuenta como
+  envío real ni aparece en la bandeja del cliente. Si existe `EMAIL_TEST_TO`,
+  ese botón usa esa dirección en vez del correo del admin.
+- **Reintentos**: si un envío falla, el admin puede volver a pulsar «Publicar
+  y enviar ahora»; se reprocesan las filas pendientes de esa noticia y canal.
+  La clave única `(noticia_id, user_id, canal)` impide duplicados.
 - **Baja antes del envío**: si el cliente se da de baja o apaga un canal
   después de encolar, la fila pendiente se marca `omitido` y no sale.
-- **Pruebas**: «Enviar solo a mí» se guarda con `prueba=true`; no cuenta como
-  envío real y no se omite por el estado de la suscripción del admin.
-
-El cron se puede probar a mano:
-
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" \
-  https://estudio-contable-web-chi.vercel.app/api/cron/noticias
-```
+- **Sin cron**: `/api/cron/noticias` queda solo como mantenimiento manual
+  (detección de cambios SUNAT y reintentos). No está programado en Vercel y no
+  envía noticias.
 
 ## WhatsApp
 
@@ -110,18 +102,24 @@ La prueba de noticias usa la base de `.env` y limpia sus filas al terminar.
 Si no hay `DATABASE_URL`, las pruebas de cola/baja se omiten y las unitarias
 siguen corriendo (útil en CI o en un clon sin secretos).
 
-## Registro de clientes
+## Registro y preferencias
 
 - El teléfono es **obligatorio** al crear la cuenta. Se guarda normalizado en
   `profiles.telefono` y en `suscripciones.whatsapp`.
-- Al registrarse se crea la suscripción con **email activo**, para que el
-  estudio pueda enviar avisos desde el primer día. Cada correo incluye el
-  enlace de baja.
-- WhatsApp queda **apagado** salvo que el cliente marque expresamente la
-  casilla de consentimiento en el registro. También puede activarlo después
-  en `/panel` → Mi cuenta.
+- Hay **una sola aceptación** en el registro: si el cliente la marca, quedan
+  activos email y WhatsApp; si no la marca, no se le envía nada. No hay una
+  suscripción separada ni un segundo opt-in.
+- En `/panel` → Mi cuenta puede volver a activar o desactivar los canales
+  cuando quiera. Marcar un canal es la aceptación; guardamos fecha e IP
+  (Ley 29733).
 - Una cuenta antigua sin teléfono puede seguir entrando y actualizarlo en Mi
   cuenta; la obligación se aplica a los perfiles nuevos.
+- La pestaña **Notificaciones** del panel del cliente muestra las noticias que
+  ya recibió, con el canal usado (Gmail/WhatsApp). Es solo lectura.
+- Las cuentas que existían antes de este cambio y no tenían una aceptación
+  registrada con IP quedaron **desactivadas**. Deben activar sus avisos desde
+  «Mi cuenta» para volver a recibirlos; no se les envía nada mientras no lo
+  hagan.
 
 ## Baja
 

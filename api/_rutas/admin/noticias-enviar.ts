@@ -88,13 +88,30 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
   });
 
   if (!encolado.filas) {
+    // Sin cron, este es el camino de reintento: si ya había filas pendientes
+    // de esas noticias/canales (por un fallo anterior), se procesan ahora.
+    if (modo === 'ahora') {
+      const reintento = await procesarEnvios({ noticiaIds: ids, canales });
+      if (reintento.enviados > 0 || reintento.fallidos > 0) {
+        res.status(200).json({
+          ok: true,
+          lote: encolado.lote,
+          encolados: 0,
+          destinatarios: 0,
+          enviados: reintento,
+          modo,
+          aviso: 'Se procesaron envíos pendientes de esas noticias.',
+        });
+        return;
+      }
+    }
     res.status(200).json({
       ok: true,
       lote: encolado.lote,
       encolados: 0,
       enviados: null,
       aviso:
-        'No hay destinatarios para esos canales. Revisa las suscripciones en Mi cuenta o usa «Enviar solo a mí».',
+        'No hay destinatarios nuevos para esos canales. Revisa las preferencias de los clientes o usa «Enviar solo a mí».',
     });
     return;
   }

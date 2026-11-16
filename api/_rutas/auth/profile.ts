@@ -41,7 +41,15 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
   const empresa = typeof body?.empresa === 'string' ? body.empresa.trim() : null;
   const rucRaw = typeof body?.ruc === 'string' ? body.ruc.replace(/\D/g, '') : null;
   const telefonoRaw = typeof body?.telefono === 'string' ? body.telefono.trim() : null;
-  const avisosWhatsapp = body?.avisos_whatsapp === true;
+  // El registro manda un único consentimiento para email + WhatsApp. Se
+  // acepta también la clave antigua `avisos_whatsapp` para no romper clientes
+  // viejos. Si no viene ninguna, no se toca la suscripción existente.
+  const avisosNoticias =
+    typeof body?.avisos_noticias === 'boolean'
+      ? body.avisos_noticias
+      : typeof body?.avisos_whatsapp === 'boolean'
+        ? body.avisos_whatsapp
+        : null;
 
   if (rucRaw && !/^\d{11}$/.test(rucRaw)) {
     res.status(400).json({ ok: false, error: 'validation', fields: { ruc: 'El RUC debe tener 11 dígitos.' } });
@@ -87,27 +95,31 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     [user.id, empresa || null, rucRaw || null, telefono]
   );
 
-  // Suscripción: email activo desde el alta; WhatsApp solo con consentimiento
-  // explícito. Si la cuenta ya existía, no se reactiva una baja ni se cambia
-  // un canal que el cliente ya había configurado. Se hace siempre para que
-  // una cuenta antigua sin fila de suscripción también sea alcanzable.
-  await query(
-    `INSERT INTO public.suscripciones
-       (user_id, email, whatsapp, canal_email, canal_whatsapp, activo,
-        consentimiento_en, consentimiento_ip)
-     VALUES ($1, $2, $3, true, $4, true,
-             CASE WHEN $4 THEN now() ELSE NULL END,
-             CASE WHEN $4 THEN $5 ELSE NULL END)
-     ON CONFLICT (user_id) DO UPDATE
-       SET email             = COALESCE(EXCLUDED.email, public.suscripciones.email),
-           whatsapp          = COALESCE(EXCLUDED.whatsapp, public.suscripciones.whatsapp),
-           canal_whatsapp    = CASE WHEN $4 THEN true ELSE public.suscripciones.canal_whatsapp END,
-           activo            = CASE WHEN $4 THEN true ELSE public.suscripciones.activo END,
-           consentimiento_en = CASE WHEN $4 THEN now() ELSE public.suscripciones.consentimiento_en END,
-           consentimiento_ip = CASE WHEN $4 THEN $5 ELSE public.suscripciones.consentimiento_ip END,
-           updated_at        = now()`,
-    [user.id, user.email, telefono, avisosWhatsapp, clientIp(req)]
-  );
+  // La aceptación del registro ES la suscripción: si acepta, email y
+  // WhatsApp quedan activos; si no, no se le envía nada. No hay un segundo
+  // opt-in. Si el cuerpo no trae la decisión (edición normal del perfil), no
+  // se toca la fila: el cliente la cambia desde «Mi cuenta».
+  if (avisosNoticias !== null) {
+    const acepta = avisosNoticias === true;
+    await query(
+      `INSERT INTO public.suscripciones
+         (user_id, email, whatsapp, canal_email, canal_whatsapp, activo,
+          consentimiento_en, consentimiento_ip)
+       VALUES ($1, $2, $3, $4, $4, $4,
+               CASE WHEN $4 THEN now() ELSE NULL END,
+               CASE WHEN $4 THEN $5 ELSE NULL END)
+       ON CONFLICT (user_id) DO UPDATE
+         SET email             = COALESCE(EXCLUDED.email, public.suscripciones.email),
+             whatsapp          = COALESCE(EXCLUDED.whatsapp, public.suscripciones.whatsapp),
+             canal_email       = EXCLUDED.canal_email,
+             canal_whatsapp    = EXCLUDED.canal_whatsapp,
+             activo            = EXCLUDED.activo,
+             consentimiento_en = CASE WHEN $4 THEN now() ELSE public.suscripciones.consentimiento_en END,
+             consentimiento_ip = CASE WHEN $4 THEN $5 ELSE public.suscripciones.consentimiento_ip END,
+             updated_at        = now()`,
+      [user.id, user.email, telefono, acepta, clientIp(req)]
+    );
+  }
 
   const profile = await queryOne(
     `SELECT empresa, ruc, telefono, notas, created_at
