@@ -136,10 +136,14 @@ func (s *Sesion) Estado() Estado {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	conectado := s.client.IsConnected()
+	// IsConnected() también es true mientras el WebSocket está abierto
+	// esperando el QR. "Vinculado" exige que el dispositivo tenga JID: sin
+	// eso, el panel cerraría el modal antes de escanear.
+	vinculado := s.client.Store != nil && s.client.Store.ID != nil
+	conectado := vinculado && s.client.IsConnected()
 	jid := ""
 	numero := ""
-	if s.client.Store != nil && s.client.Store.ID != nil {
+	if vinculado {
 		jid = s.client.Store.ID.String()
 		numero = s.client.Store.ID.User
 	}
@@ -170,7 +174,7 @@ func (s *Sesion) QR() string {
 // Si ya hay sesión conectada, devuelve errYaConectado.
 func (s *Sesion) Emparejar(ctx context.Context) (string, error) {
 	s.mu.Lock()
-	if s.client.IsConnected() {
+	if s.client.Store != nil && s.client.Store.ID != nil && s.client.IsConnected() {
 		s.mu.Unlock()
 		return "", errYaConectado
 	}
@@ -211,7 +215,7 @@ func (s *Sesion) Emparejar(ctx context.Context) (string, error) {
 
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
-		if s.client.IsConnected() {
+		if s.client.Store != nil && s.client.Store.ID != nil {
 			return "", errYaConectado
 		}
 		if qr := s.QR(); qr != "" {
@@ -277,7 +281,7 @@ func (s *Sesion) Enviar(ctx context.Context, destino string, texto string) (stri
 	client := s.client
 	s.mu.RUnlock()
 
-	if !client.IsConnected() {
+	if client.Store == nil || client.Store.ID == nil || !client.IsConnected() {
 		return "", errNoConectado
 	}
 
@@ -306,10 +310,20 @@ func (s *Sesion) Desvincular(ctx context.Context) error {
 	s.mu.Unlock()
 
 	if client.Store == nil || client.Store.ID == nil {
-		// No hay sesión: dejar el estado limpio y salir sin error.
+		// Puede haber un emparejamiento abierto sin escanear: se corta y se
+		// recrea el cliente para que el próximo QR parta de cero.
+		client.Disconnect()
+		device, err := s.container.GetFirstDevice(ctx)
+		if err != nil {
+			return fmt.Errorf("reiniciar dispositivo: %w", err)
+		}
+		nuevo := whatsmeow.NewClient(device, s.log)
+		nuevo.AddEventHandler(s.evento)
 		s.mu.Lock()
+		s.client = nuevo
 		s.qr = ""
 		s.emparejando = false
+		s.conectadoDesde = time.Time{}
 		s.ultimoError = ""
 		s.mu.Unlock()
 		return nil
