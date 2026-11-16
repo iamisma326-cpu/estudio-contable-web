@@ -38,6 +38,14 @@ import ple from './_rutas/ple.js';
 import liquidacion from './_rutas/liquidacion.js';
 import libro from './_rutas/libro.js';
 import rentaEjercicio from './_rutas/renta-ejercicio.js';
+import noticias from './_rutas/noticias.js';
+import suscripcion from './_rutas/suscripcion.js';
+import baja from './_rutas/baja.js';
+import adminNoticias from './_rutas/admin/noticias.js';
+import adminNoticiasEnviar from './_rutas/admin/noticias-enviar.js';
+import adminEnvios from './_rutas/admin/envios.js';
+import adminWhatsapp from './_rutas/admin/whatsapp.js';
+import cronNoticias from './_rutas/cron/noticias.js';
 
 /** Handler con la firma que ya usan todos los archivos de api/_rutas/. */
 type Handler = (req: ReqLike, res: ResLike) => Promise<void>;
@@ -68,6 +76,17 @@ const RUTAS: Record<string, Handler> = {
   // 'renta-anual' ya sirve el cronograma de SUNAT; este calcula el impuesto
   // del ejercicio desde los comprobantes y lo que aporta el contador.
   'renta-ejercicio': rentaEjercicio,
+  // Noticias y avisos automáticos (docs/PLAN-NOTICIAS.md)
+  noticias,
+  suscripcion,
+  baja,
+  'admin/noticias': adminNoticias,
+  'admin/noticias/enviar': adminNoticiasEnviar,
+  'admin/envios': adminEnvios,
+  'admin/whatsapp/estado': adminWhatsapp,
+  'admin/whatsapp/vincular': adminWhatsapp,
+  'admin/whatsapp/desvincular': adminWhatsapp,
+  'cron/noticias': cronNoticias,
 };
 
 /**

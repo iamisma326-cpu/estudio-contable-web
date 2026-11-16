@@ -11,3 +11,8 @@ dev.log
 .vercel-build/
 .neon
 .playwright-cli
+
+whatsapp-service/*.db
+whatsapp-service/*.db-shm
+whatsapp-service/*.db-wal
+whatsapp-service/data/

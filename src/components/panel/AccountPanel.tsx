@@ -7,12 +7,13 @@
  * llegan, así que dejar un campo vacío no lo borra.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { LogOut, UserRound } from 'lucide-react';
-import { apiSend } from '../../lib/api';
+import { BellRing, LogOut, UserRound } from 'lucide-react';
+import { apiGet, apiSend } from '../../lib/api';
 import type { Me } from '../../hooks/useSession';
+import type { Suscripcion, SuscripcionResponse } from '../../lib/noticiasTypes';
 import styles from '../../styles/PanelPage.module.css';
 
 interface Props {
@@ -27,6 +28,63 @@ export default function AccountPanel({ me, onSignOut, onSave }: Props) {
   const [telefono, setTelefono] = useState(me.profile?.telefono ?? '');
   const [status, setStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Avisos del estudio (tabla `suscripciones`). El email viene marcado por
+  // defecto para clientes existentes; WhatsApp exige número y consentimiento.
+  const [suscripcion, setSuscripcion] = useState<Suscripcion | null>(null);
+  const [canalEmail, setCanalEmail] = useState(true);
+  const [canalWhatsapp, setCanalWhatsapp] = useState(false);
+  const [whatsapp, setWhatsapp] = useState(me.profile?.telefono ?? '');
+  const [consentimiento, setConsentimiento] = useState(false);
+  const [avisoStatus, setAvisoStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [avisoSaving, setAvisoSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await apiGet<SuscripcionResponse>('/api/suscripcion');
+      if (cancelled || !res.ok || !res.data) return;
+      const sub = res.data.suscripcion;
+      setSuscripcion(sub);
+      setCanalEmail(sub ? sub.canal_email : true);
+      setCanalWhatsapp(sub ? sub.canal_whatsapp : false);
+      setWhatsapp(sub?.whatsapp ?? me.profile?.telefono ?? '');
+      setConsentimiento(Boolean(sub?.consentimiento_en));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [me.profile?.telefono]);
+
+  async function guardarAvisos(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setAvisoStatus(null);
+
+    if (canalWhatsapp && whatsapp.trim().length < 6) {
+      setAvisoStatus({ kind: 'error', text: 'Escribe el número de WhatsApp con prefijo o 9 dígitos.' });
+      return;
+    }
+    if ((canalEmail || canalWhatsapp) && !consentimiento && !suscripcion?.consentimiento_en) {
+      setAvisoStatus({ kind: 'error', text: 'Marca la casilla de consentimiento para recibir avisos.' });
+      return;
+    }
+
+    setAvisoSaving(true);
+    const res = await apiSend<{ suscripcion: Suscripcion }>('/api/suscripcion', 'POST', {
+      canal_email: canalEmail,
+      canal_whatsapp: canalWhatsapp,
+      whatsapp: whatsapp.trim(),
+      consentimiento: consentimiento || Boolean(suscripcion?.consentimiento_en),
+    });
+    setAvisoSaving(false);
+
+    if (res.ok && res.data?.suscripcion) {
+      setSuscripcion(res.data.suscripcion);
+      setAvisoStatus({ kind: 'ok', text: 'Preferencias de aviso guardadas.' });
+    } else {
+      setAvisoStatus({ kind: 'error', text: 'No se pudieron guardar los avisos. Revisa el número.' });
+    }
+  }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -159,6 +217,91 @@ export default function AccountPanel({ me, onSignOut, onSave }: Props) {
           </form>
         </section>
       </div>
+
+      <section className={styles.panel}>
+        <header className={styles.sectionHead} style={{ marginBottom: 6 }}>
+          <span className={styles.sectionIcon}>
+            <BellRing size={20} />
+          </span>
+          <div>
+            <h2 className={styles.panelTitle}>Avisos del estudio</h2>
+            <p className={styles.panelNote}>
+              Avisos tributarios y novedades de SUNAT. No se comparte con terceros.
+              {suscripcion && !suscripcion.activo && ' Ahora mismo estás dado de baja.'}
+            </p>
+          </div>
+        </header>
+
+        <form className={styles.form} onSubmit={guardarAvisos} noValidate>
+          <label className={styles.field}>
+            <span className={styles.label}>
+              <input
+                type="checkbox"
+                checked={canalEmail}
+                onChange={(e) => setCanalEmail(e.target.checked)}
+                disabled={avisoSaving}
+              />{' '}
+              Recibir por email en {me.email}
+            </span>
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.label}>
+              <input
+                type="checkbox"
+                checked={canalWhatsapp}
+                onChange={(e) => setCanalWhatsapp(e.target.checked)}
+                disabled={avisoSaving}
+              />{' '}
+              Recibir por WhatsApp
+            </span>
+          </label>
+
+          {canalWhatsapp && (
+            <label className={styles.field}>
+              <span className={styles.label}>Número de WhatsApp</span>
+              <input
+                type="tel"
+                className={styles.input}
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                disabled={avisoSaving}
+                placeholder="+51 999 999 999"
+              />
+            </label>
+          )}
+
+          <label className={styles.field}>
+            <span className={styles.label}>
+              <input
+                type="checkbox"
+                checked={consentimiento}
+                onChange={(e) => setConsentimiento(e.target.checked)}
+                disabled={avisoSaving || Boolean(suscripcion?.consentimiento_en)}
+              />{' '}
+              Acepto recibir avisos por los canales marcados
+              {canalWhatsapp && whatsapp.trim() ? ` al número ${whatsapp.trim()}` : ''}.
+            </span>
+            <span className={styles.panelNote}>
+              Puedes darte de baja cuando quieras. Guardamos la fecha de tu aceptación
+              (Ley 29733).
+            </span>
+          </label>
+
+          {avisoStatus && (
+            <p
+              role={avisoStatus.kind === 'error' ? 'alert' : 'status'}
+              className={`${styles.alert} ${avisoStatus.kind === 'ok' ? styles.alertOk : ''}`}
+            >
+              {avisoStatus.text}
+            </p>
+          )}
+
+          <button type="submit" className={styles.primaryBtn} disabled={avisoSaving}>
+            {avisoSaving ? 'Guardando…' : 'Guardar avisos'}
+          </button>
+        </form>
+      </section>
     </div>
   );
 }

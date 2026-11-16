@@ -624,3 +624,166 @@
     padding-top: 20px;
   }
 }
+
+/* ===== Noticias y avisos ===== */
+
+.stack {
+  display: grid;
+  gap: 22px;
+}
+
+.sectionIcon {
+  display: none;
+}
+
+.sectionLead {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  max-width: 70ch;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+textarea.input {
+  height: auto;
+  min-height: 86px;
+  padding: 10px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.inlineLink {
+  color: var(--color-primary);
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.checkLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.86rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.checkLabel input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+}
+
+.previewBox {
+  margin-top: 8px;
+  padding: 14px 16px;
+  border: 1px dashed rgba(11, 20, 50, 0.2);
+  border-radius: var(--border-radius-sm);
+  background: #fbfbfd;
+}
+
+.previewSubject {
+  margin: 0 0 10px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--color-primary-deep);
+}
+
+.previewText {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.noticeList {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.notice {
+  border: 1px solid rgba(11, 20, 50, 0.1);
+  border-radius: var(--border-radius-sm);
+  padding: 16px 18px;
+  background: #fff;
+  box-shadow: var(--box-shadow);
+}
+
+.noticeHeader,
+.noticeFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.noticeHeader {
+  margin-bottom: 10px;
+}
+
+.noticeFooter {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(11, 20, 50, 0.08);
+}
+
+.noticeTitle {
+  margin: 0 0 6px;
+  font-family: var(--font-heading);
+  font-size: 1.02rem;
+  line-height: 1.35;
+  color: var(--color-text);
+}
+
+.noticeText {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}
+
+.qrBox {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.qrImage {
+  width: 220px;
+  height: 220px;
+  border-radius: 12px;
+  border: 1px solid rgba(11, 20, 50, 0.12);
+  background: #fff;
+  object-fit: contain;
+  padding: 8px;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 7px;
+  background: #b91c1c;
+}
+
+.statusDotOn {
+  background: #15803d;
+}

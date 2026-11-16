@@ -31,7 +31,15 @@ export default defineConfig(({ mode }) => {
       k.startsWith('DATABASE_URL') ||
       k.startsWith('NEON_') ||
       // Object Storage de Neon (S3 compatible)
-      k.startsWith('AWS_')
+      k.startsWith('AWS_') ||
+      // Noticias y avisos (email, WhatsApp, cron, URL pública)
+      k.startsWith('GMAIL_') ||
+      k.startsWith('EMAIL_') ||
+      k.startsWith('RESEND_') ||
+      k.startsWith('WA_') ||
+      k.startsWith('CRON_') ||
+      k.startsWith('APP_URL') ||
+      k.startsWith('PUBLIC_APP_URL')
     ) {
       process.env[k] = v;
     }

@@ -19,6 +19,7 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const RecoverPage = lazy(() => import('./pages/RecoverPage'));
 const ResetPage = lazy(() => import('./pages/ResetPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const BajaPage = lazy(() => import('./pages/BajaPage'));
 
 function PageLoader() {
   return (
@@ -81,6 +82,8 @@ export default function App() {
               <Route path="/recursos" element={<Navigate to="/panel" replace />} />
               <Route path="/renta-anual-2025" element={<RentaPage />} />
               <Route path="/contacto" element={<ContactPage />} />
+              <Route path="/baja" element={<BajaPage />} />
+              <Route path="/baja/:token" element={<BajaPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/registro" element={<RegisterPage />} />
               <Route path="/recuperar" element={<RecoverPage />} />
@@ -116,15 +119,20 @@ const INTERNAL_ROUTES = new Set([
   '/panel',
 ]);
 
+/** /baja y /baja/:token son una página autónoma, sin cabecera ni pie. */
+function esRutaInterna(pathname: string): boolean {
+  return INTERNAL_ROUTES.has(pathname) || pathname.startsWith('/baja');
+}
+
 function ChromeChrome() {
   const { pathname } = useLocation();
-  if (INTERNAL_ROUTES.has(pathname)) return null;
+  if (esRutaInterna(pathname)) return null;
   return <Header />;
 }
 
 function ChromeFooter() {
   const { pathname } = useLocation();
-  if (INTERNAL_ROUTES.has(pathname)) return null;
+  if (esRutaInterna(pathname)) return null;
   return <Footer />;
 }
 
@@ -135,6 +143,6 @@ function ChromeFooter() {
  */
 function ChatChrome() {
   const { pathname } = useLocation();
-  if (INTERNAL_ROUTES.has(pathname)) return null;
+  if (esRutaInterna(pathname)) return null;
   return <ChatBot />;
 }

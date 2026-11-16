@@ -68,6 +68,35 @@ for (const statement of statements) {
 }
 console.log('Esquema aplicado.');
 
+// ------------------------------------------------------------
+// Suscripciones iniciales de los clientes que ya existen.
+//
+// El plan (docs/PLAN-NOTICIAS.md §8) marca el email como canal por defecto
+// para quien ya es cliente del estudio. La fila solo se crea si la tabla
+// existe y si el usuario no se ha dado de baja antes: ON CONFLICT DO NOTHING
+// respeta cualquier preferencia guardada por /api/suscripcion.
+//
+// `neon_auth` lo administra Neon Auth y puede no existir en una base nueva;
+// por eso se comprueba antes de consultar, en vez de asumir el esquema.
+// ------------------------------------------------------------
+const [{ auth_schema }] = await sql.query(
+  `SELECT to_regclass('neon_auth."user"') IS NOT NULL AS auth_schema`
+);
+
+if (auth_schema) {
+  const seeded = await sql.query(
+    `INSERT INTO public.suscripciones (user_id, email, canal_email, consentimiento_en)
+     SELECT u.id, u.email, true, now()
+       FROM neon_auth."user" u
+      WHERE u.email IS NOT NULL AND u.email <> '' AND u.banned IS NOT TRUE
+     ON CONFLICT (user_id) DO NOTHING
+     RETURNING user_id`
+  );
+  console.log(`Suscripciones de email sembradas: ${seeded.length}.`);
+} else {
+  console.log('neon_auth no existe todavía; se omite la semilla de suscripciones.');
+}
+
 const [{ resources }] = await sql.query(
   'SELECT count(*)::int AS resources FROM public.resources'
 );

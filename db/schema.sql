@@ -256,3 +256,135 @@ CREATE TABLE IF NOT EXISTS public.asiento_lineas (
 
 CREATE INDEX IF NOT EXISTS asiento_lineas_asiento_idx
   ON public.asiento_lineas (asiento_id);
+
+-- ============================================================
+-- NOTICIAS Y AVISOS AUTOMÁTICOS
+-- Ver docs/PLAN-NOTICIAS.md. Ninguna tabla toca las existentes.
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- Noticias: lo que el estudio cuenta a sus clientes.
+-- `estado` separa lo que un humano está escribiendo de lo que
+-- ya salió: nada en `borrador` puede enviarse.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.noticias (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug         text        NOT NULL UNIQUE,
+  titulo       text        NOT NULL,
+  resumen      text        NOT NULL DEFAULT '',
+  cuerpo       text        NOT NULL DEFAULT '',
+  -- 'sunat' | 'tributario' | 'laboral' | 'estudio'
+  categoria    text        NOT NULL DEFAULT 'sunat',
+  -- 'manual' | 'cronograma' | 'renta-anual' | 'noticias-sunat'
+  fuente       text        NOT NULL DEFAULT 'manual',
+  fuente_url   text,
+  -- 'borrador' | 'publicada' | 'archivada'
+  estado       text        NOT NULL DEFAULT 'borrador',
+  -- Ordena el feed y el digest. NULL mientras sea borrador.
+  publicada_en timestamptz,
+  created_by   uuid,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT noticias_estado_check
+    CHECK (estado IN ('borrador', 'publicada', 'archivada')),
+  CONSTRAINT noticias_categoria_check
+    CHECK (categoria IN ('sunat', 'tributario', 'laboral', 'estudio'))
+);
+
+CREATE INDEX IF NOT EXISTS noticias_estado_idx
+  ON public.noticias (estado, publicada_en DESC NULLS LAST);
+
+-- ------------------------------------------------------------
+-- Preferencias de aviso por cliente. Una fila por usuario.
+-- `baja_token` permite darse de baja sin sesión desde un email.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.suscripciones (
+  user_id           uuid PRIMARY KEY,
+  email             text,
+  -- E.164 sin signos: 51987654321
+  whatsapp          text,
+  canal_email       boolean NOT NULL DEFAULT true,
+  canal_whatsapp    boolean NOT NULL DEFAULT false,
+  activo            boolean NOT NULL DEFAULT true,
+  -- Ley 29733: hay que poder probar cuándo y cómo aceptó.
+  consentimiento_en timestamptz,
+  consentimiento_ip text,
+  baja_token        uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  updated_at        timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS suscripciones_baja_token_idx
+  ON public.suscripciones (baja_token);
+
+-- ------------------------------------------------------------
+-- Cola de envíos. Una fila por (noticia, usuario, canal).
+-- `lote` agrupa las filas que salieron en el MISMO digest: así
+-- un email con 3 noticias no se cuenta como 3 emails distintos.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.envios (
+  id           bigserial PRIMARY KEY,
+  noticia_id   uuid        NOT NULL REFERENCES public.noticias(id) ON DELETE CASCADE,
+  user_id      uuid        NOT NULL,
+  canal        text        NOT NULL CHECK (canal IN ('email', 'whatsapp')),
+  destino      text        NOT NULL,
+  lote         uuid,
+  -- 'pendiente' | 'enviado' | 'fallido' | 'omitido'
+  estado       text        NOT NULL DEFAULT 'pendiente',
+  intentos     integer     NOT NULL DEFAULT 0,
+  proveedor_id text,
+  error        text,
+  enviado_en   timestamptz,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  -- Idempotencia: un reintento del cron no puede duplicar el envío.
+  UNIQUE (noticia_id, user_id, canal)
+);
+
+CREATE INDEX IF NOT EXISTS envios_pendientes_idx
+  ON public.envios (estado, created_at)
+  WHERE estado = 'pendiente';
+
+CREATE INDEX IF NOT EXISTS envios_noticia_idx
+  ON public.envios (noticia_id, estado);
+
+-- ------------------------------------------------------------
+-- Huella de cada fuente que vigila el detector. `hash` es del
+-- contenido normalizado (no del HTML crudo con la fecha de hoy),
+-- para que un "última actualización" no dispare un falso positivo.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.fuente_snapshots (
+  clave        text PRIMARY KEY,
+  hash         text        NOT NULL,
+  contenido    jsonb,
+  etag         text,
+  revisado_en  timestamptz NOT NULL DEFAULT now(),
+  -- Cuándo se detectó el último cambio real.
+  cambiado_en  timestamptz
+);
+
+-- ------------------------------------------------------------
+-- Semilla: los cuatro artículos que antes vivían en GuidePanel.tsx.
+-- ON CONFLICT DO NOTHING respeta ediciones hechas desde el panel.
+-- ------------------------------------------------------------
+INSERT INTO public.noticias (slug, titulo, resumen, cuerpo, categoria, fuente, estado, publicada_en) VALUES
+  ('sire-integral-uso-obligatorio',
+   'SIRE Integral: SUNAT amplía su uso obligatorio',
+   'Más contribuyentes deben llevar el Registro de Compras y Ventas por el sistema en línea. Verifica si tu RUC entra en el nuevo cronograma.',
+   'El Sistema Integrado de Registros Electrónicos (SIRE) amplía su alcance. Revisa la resolución de SUNAT y confirma si tu RUC está dentro del cronograma de incorporación.',
+   'sunat', 'manual', 'publicada', '2026-09-15 12:00:00+00'),
+  ('uit-2026-sube-5500',
+   'La UIT 2026 sube a S/ 5,500',
+   'El incremento ajusta los umbrales de los regímenes: el RER sigue en S/ 525,000 y el RMT llega a S/ 9,350,000 de ingresos anuales.',
+   'La Unidad Impositiva Tributaria para el ejercicio 2026 se fija en S/ 5,500. El cambio afecta los topes de los regímenes tributarios y las escalas de renta.',
+   'tributario', 'manual', 'publicada', '2026-01-10 12:00:00+00'),
+  ('gratificaciones-errores-multas',
+   'Gratificaciones: errores que cuestan multas',
+   'Pagar fuera de fecha u omitir la bonificación extraordinaria del 9 % es de lo más fiscalizado por el MTPE y SUNAT.',
+   'La bonificación extraordinaria del 9 % y el pago dentro del plazo legal son los dos puntos que más se fiscalizan. Revisa tu calendario laboral antes de cerrar la planilla.',
+   'laboral', 'manual', 'publicada', '2026-08-05 12:00:00+00'),
+  ('pagos-efectivo-topes',
+   'Pagos en efectivo: topes de detección',
+   'Las operaciones en efectivo por montos altos quedan sujetas a control de SUNAT. Recomendamos usar canales bancarios para cobros importantes.',
+   'SUNAT puede solicitar información sobre operaciones en efectivo que superen los topes establecidos. Usa medios bancarios para los cobros de mayor monto y conserva el sustento.',
+   'tributario', 'manual', 'publicada', '2026-07-20 12:00:00+00')
+ON CONFLICT (slug) DO NOTHING;

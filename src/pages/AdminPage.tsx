@@ -9,6 +9,8 @@ import DarkBackground from '../components/DarkBackground';
  *   Liquidación   IGV del mes y pago a cuenta de renta
  *   Renta anual   impuesto del ejercicio (DJ 710)
  *   Recursos  catálogo del área privada
+ *   Noticias  noticias, publicación y envío por email/WhatsApp
+ *   WhatsApp  vinculación del número del estudio (QR)
  *   Editor    herramienta de edición asistida de PDF (PDFEditor)
  *
  * El rol y la sesión se verifican en RouteGuard (/admin es adminOnly) y otra
@@ -26,6 +28,8 @@ import ResourcesPanel from '../components/admin/ResourcesPanel';
 import ComprobantesPanel from '../components/admin/ComprobantesPanel';
 import LiquidacionPanel from '../components/admin/LiquidacionPanel';
 import RentaAnualPanel from '../components/admin/RentaAnualPanel';
+import NoticiasPanel from '../components/admin/NoticiasPanel';
+import WhatsAppPanel from '../components/admin/WhatsAppPanel';
 import styles from '../styles/AdminPage.module.css';
 
 const TABS = [
@@ -35,6 +39,8 @@ const TABS = [
   { id: 'liquidacion', label: 'Liquidación' },
   { id: 'renta-anual', label: 'Renta anual' },
   { id: 'recursos', label: 'Recursos' },
+  { id: 'noticias', label: 'Noticias' },
+  { id: 'whatsapp', label: 'WhatsApp' },
   { id: 'editor', label: 'Editor PDF' },
 ] as const;
 
@@ -102,6 +108,8 @@ export default function AdminPage() {
         {tab === 'liquidacion' && <LiquidacionPanel />}
         {tab === 'renta-anual' && <RentaAnualPanel />}
         {tab === 'recursos' && <ResourcesPanel />}
+        {tab === 'noticias' && <NoticiasPanel />}
+        {tab === 'whatsapp' && <WhatsAppPanel />}
         {tab === 'editor' && <PDFEditor />}
       </div>
     </section>

@@ -16,7 +16,7 @@
     "test:ingesta": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-ingesta.ts",
     "test:persistencia": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-persistencia.ts",
     "test:api": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-comprobantes.ts",
-    "test": "npm run test:comprobante && npm run test:asientos && npm run test:xml && npm run test:moneda && npm run test:ingesta && npm run test:pdf && npm run test:ple && npm run test:igv && npm run test:excel && npm run test:fechas && npm run test:ple-validador && npm run test:ple-carpeta && npm run test:renta-anual && npm run test:fecha-iso",
+    "test": "npm run test:comprobante && npm run test:asientos && npm run test:xml && npm run test:moneda && npm run test:ingesta && npm run test:pdf && npm run test:ple && npm run test:igv && npm run test:excel && npm run test:fechas && npm run test:ple-validador && npm run test:ple-carpeta && npm run test:renta-anual && npm run test:fecha-iso && npm run test:noticias",
     "db:migrate": "node --env-file=.env scripts/db-migrate.mjs",
     "db:seed-admin": "node --env-file=.env scripts/seed-admin.mjs",
     "test:clientes": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-clientes.ts",
@@ -33,7 +33,8 @@
     "test:ple-carpeta": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-ple-carpeta.ts",
     "test:renta-anual": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-renta-anual.ts",
     "test:renta-ejercicio": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-api-renta-ejercicio.ts",
-    "test:fecha-iso": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-fecha-iso.ts"
+    "test:fecha-iso": "node --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-fecha-iso.ts",
+    "test:noticias": "node --env-file=.env --experimental-strip-types --import ./scripts/_resolver-ts.mjs scripts/test-noticias.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",
@@ -46,6 +47,7 @@
     "gsap": "^3.15.0",
     "jose": "^6.2.15",
     "lucide-react": "^0.546.0",
+    "nodemailer": "^7.0.13",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.4.299",
     "react": "^19.0.1",
@@ -54,6 +56,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "@vitejs/plugin-react": "^5.0.4",
