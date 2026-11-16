@@ -162,7 +162,13 @@ export default function NoticiasPanel() {
       setError('No se pudo guardar. Revisa los campos e inténtalo otra vez.');
       return;
     }
-    setAviso(editingId ? 'Noticia actualizada.' : 'Borrador creado.');
+    setAviso(
+      editingId
+        ? 'Noticia actualizada.'
+        : form.estado === 'publicada'
+          ? 'Noticia creada y publicada.'
+          : 'Borrador creado.'
+    );
     setFormOpen(false);
     setEditingId(null);
     await load();
@@ -183,10 +189,6 @@ export default function NoticiasPanel() {
   }
 
   async function enviar(noticia: Noticia, opciones: { soloMi: boolean; modo: 'ahora' | 'cola' }) {
-    if (noticia.estado !== 'publicada') {
-      setError('Publica la noticia antes de enviarla.');
-      return;
-    }
     if (!canalesElegidos.length) {
       setError('Elige al menos un canal (email o WhatsApp).');
       return;
@@ -195,6 +197,26 @@ export default function NoticiasPanel() {
     setBusy(noticia.id);
     setError(null);
     setAviso(null);
+
+    // «Publicar y enviar ahora» publica primero. La prueba «solo a mí» no
+    // publica nada: exige que la noticia ya esté publicada.
+    if (noticia.estado !== 'publicada') {
+      if (opciones.soloMi) {
+        setBusy(null);
+        setError('Publica la noticia antes de enviarte la prueba.');
+        return;
+      }
+      const publicada = await apiSend('/api/admin/noticias', 'PATCH', {
+        id: noticia.id,
+        estado: 'publicada',
+      });
+      if (!publicada.ok) {
+        setBusy(null);
+        setError('No se pudo publicar la noticia; no se envió nada.');
+        return;
+      }
+    }
+
     const res = await apiSend<EnviarResponse>('/api/admin/noticias/enviar', 'POST', {
       id: noticia.id,
       canales: canalesElegidos,
@@ -472,7 +494,7 @@ export default function NoticiasPanel() {
                       <button
                         type="button"
                         className={styles.primaryBtn}
-                        disabled={noticia.estado !== 'publicada' || busy === noticia.id}
+                        disabled={(soloMi && noticia.estado !== 'publicada') || busy === noticia.id}
                         onClick={() => void enviar(noticia, { soloMi, modo: 'ahora' })}
                       >
                         <Send size={14} /> {soloMi ? 'Enviar solo a mí' : 'Publicar y enviar ahora'}
