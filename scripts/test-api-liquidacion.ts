@@ -88,7 +88,7 @@ try {
     return id;
   }
 
-  const tokenAsistente = await firmar(await nuevoUsuario('asistente'));
+  const tokenAdmin = await firmar(await nuevoUsuario('admin'));
   const tokenCliente = await firmar(await nuevoUsuario('user'));
 
   const cli = await query<{ id: string; ruc: string }>(
@@ -136,31 +136,31 @@ try {
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokenAsistente, 'liquidacion', { clienteId, periodo: '2026-11' }), res as never);
+    await handler(req('POST', tokenAdmin, 'liquidacion', { clienteId, periodo: '2026-11' }), res as never);
     check('POST => 405', out.status === 405, String(out.status));
   }
 
   console.log('\n--- Parámetros ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'liquidacion', { periodo: '2026-11' }), res as never);
+    await handler(req('GET', tokenAdmin, 'liquidacion', { periodo: '2026-11' }), res as never);
     check('sin clienteId => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'liquidacion', { clienteId }), res as never);
+    await handler(req('GET', tokenAdmin, 'liquidacion', { clienteId }), res as never);
     check('sin período => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'liquidacion', { clienteId: crypto.randomUUID(), periodo: '2026-11' }), res as never);
+    await handler(req('GET', tokenAdmin, 'liquidacion', { clienteId: crypto.randomUUID(), periodo: '2026-11' }), res as never);
     check('cliente inexistente => 404', out.status === 404, String(out.status));
   }
 
   console.log('\n--- Liquidación del mes ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'liquidacion', { clienteId, periodo: '2026-11' }), res as never);
+    await handler(req('GET', tokenAdmin, 'liquidacion', { clienteId, periodo: '2026-11' }), res as never);
     const b = out.body as any;
     check('devuelve 200', out.status === 200, String(out.status));
 
@@ -186,7 +186,7 @@ try {
   console.log('\n--- Sin saldo anterior no se inventa uno ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'liquidacion', { clienteId, periodo: '2026-12' }), res as never);
+    await handler(req('GET', tokenAdmin, 'liquidacion', { clienteId, periodo: '2026-12' }), res as never);
     const b = out.body as any;
     check('devuelve 200', out.status === 200);
     eq('saldo anterior 0', b.igv?.saldoAnterior, 0);
@@ -199,7 +199,7 @@ try {
   console.log('\n--- Mes sin período creado ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'liquidacion', { clienteId, periodo: '2027-03' }), res as never);
+    await handler(req('GET', tokenAdmin, 'liquidacion', { clienteId, periodo: '2027-03' }), res as never);
     const b = out.body as any;
     check('devuelve 200', out.status === 200);
     eq('0 ventas', b.igv?.ventas?.cantidad, 0);

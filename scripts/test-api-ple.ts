@@ -85,7 +85,7 @@ try {
     return id;
   }
 
-  const tokenAsistente = await firmar(await nuevoUsuario('asistente'));
+  const tokenAdmin = await firmar(await nuevoUsuario('admin'));
   const tokenCliente = await firmar(await nuevoUsuario('user'));
 
   const cli = await query<{ id: string; ruc: string }>(
@@ -128,41 +128,41 @@ try {
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokenAsistente, 'ple', { clienteId, periodo: '2026-11' }), res as never);
+    await handler(req('POST', tokenAdmin, 'ple', { clienteId, periodo: '2026-11' }), res as never);
     check('POST => 405', out.status === 405, String(out.status));
   }
 
   console.log('\n--- Validación de parámetros ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'ple', { periodo: '2026-11' }), res as never);
+    await handler(req('GET', tokenAdmin, 'ple', { periodo: '2026-11' }), res as never);
     check('sin clienteId => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'ple', { clienteId }), res as never);
+    await handler(req('GET', tokenAdmin, 'ple', { clienteId }), res as never);
     check('sin período => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'ple', { clienteId, periodo: 'noviembre' }), res as never);
+    await handler(req('GET', tokenAdmin, 'ple', { clienteId, periodo: 'noviembre' }), res as never);
     check('período mal formado => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'ple', { clienteId, periodo: '2026-11', formato: '5.1' }), res as never);
+    await handler(req('GET', tokenAdmin, 'ple', { clienteId, periodo: '2026-11', formato: '5.1' }), res as never);
     check('formato inválido => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'ple', { clienteId: crypto.randomUUID(), periodo: '2026-11' }), res as never);
+    await handler(req('GET', tokenAdmin, 'ple', { clienteId: crypto.randomUUID(), periodo: '2026-11' }), res as never);
     check('cliente inexistente => 404', out.status === 404, String(out.status));
   }
 
   console.log('\n--- Resumen de compras (8.1) ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'ple', { clienteId, periodo: '2026-11', formato: '8.1' }), res as never);
+    await handler(req('GET', tokenAdmin, 'ple', { clienteId, periodo: '2026-11', formato: '8.1' }), res as never);
     const b = out.body as Record<string, never>;
     const t = (b as { totales: { registros: number; base: number; igv: number; total: number } }).totales;
     check('devuelve 200', out.status === 200, String(out.status));
@@ -177,7 +177,7 @@ try {
   console.log('\n--- Resumen de ventas (14.1) ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'ple', { clienteId, periodo: '2026-11', formato: '14.1' }), res as never);
+    await handler(req('GET', tokenAdmin, 'ple', { clienteId, periodo: '2026-11', formato: '14.1' }), res as never);
     const b = out.body as unknown as { totales: { registros: number; total: number }; nombreArchivo: string };
     check('devuelve 200', out.status === 200);
     check('solo 1 venta', b.totales?.registros === 1, String(b.totales?.registros));
@@ -188,7 +188,7 @@ try {
   console.log('\n--- Descarga del archivo ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'ple', { clienteId, periodo: '2026-11', formato: '8.1', descargar: '1' }), res as never);
+    await handler(req('GET', tokenAdmin, 'ple', { clienteId, periodo: '2026-11', formato: '8.1', descargar: '1' }), res as never);
     check('devuelve 200', out.status === 200);
     check('texto plano', String(out.headers['Content-Type']).startsWith('text/plain'), out.headers['Content-Type']);
     check('se descarga con nombre', String(out.headers['Content-Disposition']).includes('.TXT'), out.headers['Content-Disposition']);
@@ -213,7 +213,7 @@ try {
   console.log('\n--- Período sin comprobantes ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'ple', { clienteId, periodo: '2026-12', formato: '8.1' }), res as never);
+    await handler(req('GET', tokenAdmin, 'ple', { clienteId, periodo: '2026-12', formato: '8.1' }), res as never);
     const b = out.body as unknown as { totales: { registros: number }; avisos: string[]; nombreArchivo: string };
     check('devuelve 200', out.status === 200);
     check('0 registros', b.totales?.registros === 0);
@@ -222,7 +222,7 @@ try {
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'ple', { clienteId, periodo: '2026-12', formato: '8.1', descargar: '1' }), res as never);
+    await handler(req('GET', tokenAdmin, 'ple', { clienteId, periodo: '2026-12', formato: '8.1', descargar: '1' }), res as never);
     check('descarga vacía => 200 con contenido vacío', out.status === 200 && (out.text ?? '').length === 0);
   }
 

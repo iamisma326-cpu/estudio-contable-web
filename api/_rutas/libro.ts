@@ -1,5 +1,5 @@
 /**
- * Excel del mes (solo staff).
+ * Excel del mes (solo admin).
  *
  * GET /api/libro?clienteId=&periodo=&descargar=1
  *
@@ -17,7 +17,7 @@ import { fechaISO } from '../_lib/fecha-iso.js';
 import { query, queryOne } from '../_db/db.js';
 import type { ReqLike, ResLike } from '../_auth/http.js';
 import { applyCors, methodNotAllowed, queryParam } from '../_auth/http.js';
-import { requireStaff } from '../_auth/guard.js';
+import { requireAdmin } from '../_auth/guard.js';
 import { crearLibroMensual, nombreLibro } from '../_lib/libro-excel.js';
 import { liquidarIGV, pagoACuenta, ingresosNetosDeVentas, type ComprobanteTributario } from '../_lib/igv-mensual.js';
 import { generarAsiento } from '../_lib/asientos.js';
@@ -75,7 +75,7 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     return;
   }
 
-  const user = await requireStaff(req, res);
+  const user = await requireAdmin(req, res);
   if (!user) return;
 
   const clienteId = queryParam(req, 'clienteId');

@@ -127,7 +127,7 @@ try {
     return id;
   }
 
-  const tokenAsistente = await firmar(await nuevoUsuario('asistente'));
+  const tokenAdmin = await firmar(await nuevoUsuario('admin'));
   const tokenCliente = await firmar(await nuevoUsuario('user'));
 
   const cli = await query<{ id: string }>(
@@ -176,24 +176,24 @@ try {
   console.log('\n--- Parámetros ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'renta-ejercicio', { anio: '2026' }), res as never);
+    await handler(req('GET', tokenAdmin, 'renta-ejercicio', { anio: '2026' }), res as never);
     check('sin clienteId => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'renta-ejercicio', { clienteId, anio: 'dosmil' }), res as never);
+    await handler(req('GET', tokenAdmin, 'renta-ejercicio', { clienteId, anio: 'dosmil' }), res as never);
     check('año inválido => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'renta-ejercicio', { clienteId: crypto.randomUUID(), anio: '2026' }), res as never);
+    await handler(req('GET', tokenAdmin, 'renta-ejercicio', { clienteId: crypto.randomUUID(), anio: '2026' }), res as never);
     check('cliente inexistente => 404', out.status === 404, String(out.status));
   }
 
   console.log('\n--- Ingresos solo de confirmados y del año ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'renta-ejercicio', { clienteId, anio: '2026' }), res as never);
+    await handler(req('GET', tokenAdmin, 'renta-ejercicio', { clienteId, anio: '2026' }), res as never);
     const b = out.body as any;
     check('devuelve 200', out.status === 200, String(out.status));
     // 10,000 + 10,000 de ventas confirmadas; el pendiente y el de 2025 no entran.
@@ -205,7 +205,7 @@ try {
   console.log('\n--- Lo que falta se informa, no se asume ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'renta-ejercicio', { clienteId, anio: '2026' }), res as never);
+    await handler(req('GET', tokenAdmin, 'renta-ejercicio', { clienteId, anio: '2026' }), res as never);
     const b = out.body as any;
     check('avisa que faltan gastos deducibles',
       (b.faltantes as string[]).some((f) => /gastos deducibles/i.test(f)), JSON.stringify(b.faltantes));
@@ -219,7 +219,7 @@ try {
   {
     const { out, res } = fakeRig();
     await handler(
-      req('POST', tokenAsistente, 'renta-ejercicio', null, {
+      req('POST', tokenAdmin, 'renta-ejercicio', null, {
         clienteId, anio: 2026,
         gastosDeducibles: 5000, pagosACuenta: 1000, gastosRecreativos: 300,
       }),
@@ -237,7 +237,7 @@ try {
 
     // Se recupera en un GET posterior: no se perdió al responder.
     const { out: out2, res: res2 } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'renta-ejercicio', { clienteId, anio: '2026' }), res2 as never);
+    await handler(req('GET', tokenAdmin, 'renta-ejercicio', { clienteId, anio: '2026' }), res2 as never);
     const b2 = out2.body as any;
     check('los datos persisten', b2.liquidacion.gastosDeducibles === 5000, String(b2.liquidacion.gastosDeducibles));
     check('los pagos a cuenta persisten', b2.datosContador.pagosACuenta === 1000, String(b2.datosContador.pagosACuenta));
@@ -246,7 +246,7 @@ try {
   console.log('\n--- Un año sin comprobantes no rompe ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'renta-ejercicio', { clienteId, anio: '2024' }), res as never);
+    await handler(req('GET', tokenAdmin, 'renta-ejercicio', { clienteId, anio: '2024' }), res as never);
     check('responde 200', out.status === 200, String(out.status));
     const b = out.body as any;
     check('ingresos en cero', b.ingresosNetos === 0, String(b.ingresosNetos));
@@ -256,7 +256,7 @@ try {
   console.log('\n--- Las líneas del formulario ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'renta-ejercicio', { clienteId, anio: '2026' }), res as never);
+    await handler(req('GET', tokenAdmin, 'renta-ejercicio', { clienteId, anio: '2026' }), res as never);
     const lineas = (out.body as any).liquidacion.lineas as Array<{ concepto: string; importe: number }>;
     check('trae líneas', lineas.length > 5, String(lineas.length));
     check('incluye la renta bruta', lineas.some((l) => /Renta bruta/i.test(l.concepto)));

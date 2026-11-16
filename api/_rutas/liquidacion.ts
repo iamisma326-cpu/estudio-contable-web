@@ -1,5 +1,5 @@
 /**
- * Liquidación mensual del IGV y pago a cuenta de renta (solo staff).
+ * Liquidación mensual del IGV y pago a cuenta de renta (solo admin).
  *
  * GET /api/liquidacion?clienteId=&periodo=
  *
@@ -20,7 +20,7 @@
 import { queryOne, query } from '../_db/db.js';
 import type { ReqLike, ResLike } from '../_auth/http.js';
 import { applyCors, methodNotAllowed, queryParam } from '../_auth/http.js';
-import { requireStaff } from '../_auth/guard.js';
+import { requireAdmin } from '../_auth/guard.js';
 import {
   liquidarIGV,
   pagoACuenta,
@@ -48,7 +48,7 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     return;
   }
 
-  const user = await requireStaff(req, res);
+  const user = await requireAdmin(req, res);
   if (!user) return;
 
   const clienteId = queryParam(req, 'clienteId');

@@ -1,5 +1,5 @@
 /**
- * Exportación PLE (solo staff).
+ * Exportación PLE (solo admin).
  *
  * GET /api/ple?clienteId=&periodo=&formato=14.1|8.1
  *   Devuelve los totales del registro y, con &descargar=1, el archivo .txt.
@@ -19,7 +19,7 @@ import { fechaISO } from '../_lib/fecha-iso.js';
 import { query, queryOne } from '../_db/db.js';
 import type { ReqLike, ResLike } from '../_auth/http.js';
 import { applyCors, methodNotAllowed, queryParam } from '../_auth/http.js';
-import { requireStaff } from '../_auth/guard.js';
+import { requireAdmin } from '../_auth/guard.js';
 import { generarPLE, nombreArchivo, type FormatoPLE } from '../_lib/ple.js';
 import type { ComprobanteIngerido } from '../_lib/ingesta.js';
 
@@ -85,7 +85,7 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     return;
   }
 
-  const user = await requireStaff(req, res);
+  const user = await requireAdmin(req, res);
   if (!user) return;
 
   const clienteId = queryParam(req, 'clienteId');

@@ -19,7 +19,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'asistente' | 'user';
+  role: 'admin' | 'user';
   banned: boolean;
 }
 
@@ -80,9 +80,11 @@ export async function getUser(req: ReqLike): Promise<AuthUser | null> {
     email: row.email,
     name: row.name,
     // El rol vive como texto libre en neon_auth.user (esquema administrado por
-    // Neon Auth): aquí se normaliza a los tres valores que entiende la app.
-    // Cualquier otro valor cae en 'user' — nunca escala privilegios solo.
-    role: row.role === 'admin' ? 'admin' : row.role === 'asistente' ? 'asistente' : 'user',
+    // Neon Auth): aquí se normaliza a los dos valores que entiende la app.
+    // Cualquier otro valor cae en 'user' — nunca escala privilegios solo. Eso
+    // incluye filas antiguas con role = 'asistente': ese rol se retiró, así que
+    // esas cuentas quedan como clientes hasta que un admin les dé otro rol.
+    role: row.role === 'admin' ? 'admin' : 'user',
     banned: row.banned === true,
   };
 }
@@ -102,23 +104,13 @@ export async function requireUser(req: ReqLike, res: ResLike): Promise<AuthUser 
 }
 
 /**
- * Guard: sesión válida con rol operativo (admin o asistente).
+ * Guard: sesión válida con rol admin.
  *
- * Para las herramientas del estudio que NO son administración de cuentas:
- * registrar comprobantes, confirmar partidas, exportar libros. Un asistente
- * puede operar aquí pero sigue sin poder tocar usuarios (eso es requireAdmin).
+ * Todas las herramientas del estudio (comprobantes, libros, liquidación, PLE,
+ * renta) son del admin. Antes existía un rol `asistente` que operaba esas
+ * pantallas sin gestionar cuentas; se retiró para no mantener dos modelos de
+ * permisos a medias. Un `user` recibe 403.
  */
-export async function requireStaff(req: ReqLike, res: ResLike): Promise<AuthUser | null> {
-  const user = await requireUser(req, res);
-  if (!user) return null;
-  if (user.role !== 'admin' && user.role !== 'asistente') {
-    res.status(403).json({ ok: false, error: 'forbidden' });
-    return null;
-  }
-  return user;
-}
-
-/** Guard: además exige role = 'admin'. Un asistente NO pasa por aquí. */
 export async function requireAdmin(req: ReqLike, res: ResLike): Promise<AuthUser | null> {
   const user = await requireUser(req, res);
   if (!user) return null;

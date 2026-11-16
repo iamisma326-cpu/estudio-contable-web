@@ -1,5 +1,5 @@
 /**
- * Renta anual del ejercicio (solo staff).
+ * Renta anual del ejercicio (solo admin).
  *
  * GET  /api/renta-anual?clienteId=&anio=          → liquidación con las líneas del 710
  * POST /api/renta-anual                            → guarda datos que no están en
@@ -19,7 +19,7 @@
 import { query, queryOne } from '../_db/db.js';
 import type { ReqLike, ResLike } from '../_auth/http.js';
 import { applyCors, methodNotAllowed, queryParam, readJsonBody } from '../_auth/http.js';
-import { requireStaff } from '../_auth/guard.js';
+import { requireAdmin } from '../_auth/guard.js';
 import { liquidarIGV, ingresosNetosDeVentas, type ComprobanteTributario } from '../_lib/igv-mensual.js';
 import { liquidarRentaAnual, type DatosAnuales, type RegimenAnual } from '../_lib/renta-anual.js';
 import { UIT_2026 } from '../../src/data/regimenes.js';
@@ -104,7 +104,7 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     return;
   }
 
-  const user = await requireStaff(req, res);
+  const user = await requireAdmin(req, res);
   if (!user) return;
 
   const body = req.method === 'POST' ? ((await readJsonBody(req)) as Record<string, unknown> | null) : null;

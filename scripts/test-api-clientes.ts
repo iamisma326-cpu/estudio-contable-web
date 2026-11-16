@@ -2,7 +2,7 @@
  * Prueba de los endpoints de clientes y períodos, con autenticación real.
  *
  * Mismo método que test-api-comprobantes: JWKS local, usuarios temporales en
- * neon_auth, y la base real. Se comprueba que un asistente pasa, un cliente no,
+ * neon_auth, y la base real. Se comprueba que un admin pasa, un cliente no,
  * y que las consultas devuelven lo que la pantalla espera.
  *
  * Uso: npm run test:clientes
@@ -82,7 +82,7 @@ try {
     return id;
   }
 
-  const tokenAsistente = await firmar(await nuevoUsuario('asistente'));
+  const tokenAdmin = await firmar(await nuevoUsuario('admin'));
   const tokenCliente = await firmar(await nuevoUsuario('user'));
 
   // Cliente A activo, cliente B inactivo: el inactivo no debe salir.
@@ -115,7 +115,7 @@ try {
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokenAsistente, 'clientes'), res as never);
+    await handler(req('POST', tokenAdmin, 'clientes'), res as never);
     check('POST => 405', out.status === 405, String(out.status));
   }
   {
@@ -127,7 +127,7 @@ try {
   console.log('\n--- Lista de clientes ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'clientes'), res as never);
+    await handler(req('GET', tokenAdmin, 'clientes'), res as never);
     const body = out.body as { clientes: Array<Record<string, unknown>> };
     check('devuelve 200', out.status === 200);
     const lista = body.clientes ?? [];
@@ -145,7 +145,7 @@ try {
   console.log('\n--- Períodos ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'periodos', { clienteId: a[0].id }), res as never);
+    await handler(req('GET', tokenAdmin, 'periodos', { clienteId: a[0].id }), res as never);
     const body = out.body as { periodos: Array<Record<string, unknown>> };
     check('devuelve 200', out.status === 200);
     check('encuentra el período creado', (body.periodos ?? []).some((p) => p.id === per[0].id));
@@ -154,12 +154,12 @@ try {
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'periodos'), res as never);
+    await handler(req('GET', tokenAdmin, 'periodos'), res as never);
     check('sin clienteId => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'periodos', { clienteId: crypto.randomUUID() }), res as never);
+    await handler(req('GET', tokenAdmin, 'periodos', { clienteId: crypto.randomUUID() }), res as never);
     const body = out.body as { periodos: unknown[] };
     check('cliente sin períodos => lista vacía', out.status === 200 && (body.periodos ?? []).length === 0);
   }

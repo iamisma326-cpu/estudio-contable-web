@@ -121,7 +121,7 @@ try {
     return id;
   }
 
-  const tokenAsistente = await firmar(await nuevoUsuario('asistente'));
+  const tokenAdmin = await firmar(await nuevoUsuario('admin'));
   const tokenCliente = await firmar(await nuevoUsuario('user'));
 
   const cli = await query<{ id: string; ruc: string }>(
@@ -166,24 +166,24 @@ try {
   console.log('\n--- Parámetros ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'libro', { periodo: '2026-11' }), res as never);
+    await handler(req('GET', tokenAdmin, 'libro', { periodo: '2026-11' }), res as never);
     check('sin clienteId => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'libro', { clienteId, periodo: 'x' }), res as never);
+    await handler(req('GET', tokenAdmin, 'libro', { clienteId, periodo: 'x' }), res as never);
     check('período inválido => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'libro', { clienteId: crypto.randomUUID(), periodo: '2026-11' }), res as never);
+    await handler(req('GET', tokenAdmin, 'libro', { clienteId: crypto.randomUUID(), periodo: '2026-11' }), res as never);
     check('cliente inexistente => 404', out.status === 404, String(out.status));
   }
 
   console.log('\n--- Resumen sin descargar ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'libro', { clienteId, periodo: '2026-11' }), res as never);
+    await handler(req('GET', tokenAdmin, 'libro', { clienteId, periodo: '2026-11' }), res as never);
     const b = out.body as any;
     check('devuelve 200', out.status === 200, String(out.status));
     check('2 confirmados', b.confirmados === 2, String(b.confirmados));
@@ -196,7 +196,7 @@ try {
   console.log('\n--- Descarga del .xlsx ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'libro', { clienteId, periodo: '2026-11', descargar: '1' }), res as never);
+    await handler(req('GET', tokenAdmin, 'libro', { clienteId, periodo: '2026-11', descargar: '1' }), res as never);
     check('devuelve 200', out.status === 200);
     check('manda el binario', out.bin !== null && out.bin.length > 1000, String(out.bin?.length));
     check('tipo MIME de Excel',
@@ -255,14 +255,14 @@ try {
     check('el saldo quedó guardado', chk[0]?.s === '50.00', String(chk[0]?.s));
 
     const { out: outLiq, res: resLiq } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'libro', { clienteId, periodo: '2026-11' }), resLiq as never);
+    await handler(req('GET', tokenAdmin, 'libro', { clienteId, periodo: '2026-11' }), resLiq as never);
     const libro = outLiq.body as any;
     // IGV ventas 180 - crédito 108 = 72. Con el saldo de 50: 72 - 50 = 22.
     // Lo que se prueba es que el 50 se resta, no el valor concreto.
     check('el libro resta el saldo a favor', libro.igvAPagar === 22, String(libro.igvAPagar));
 
     const { out: outXl, res: resXl } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'libro', { clienteId, periodo: '2026-11', descargar: '1' }), resXl as never);
+    await handler(req('GET', tokenAdmin, 'libro', { clienteId, periodo: '2026-11', descargar: '1' }), resXl as never);
     const resumen = leerEntrada(outXl.bin as Buffer, 'xl/worksheets/sheet4.xml') ?? '';
     check('el Excel lleva el saldo a favor', resumen.includes('-50') || resumen.includes('>50<'),
       'no aparece el saldo');
@@ -277,9 +277,9 @@ try {
     // el mismo mes daba dos cifras distintas según dónde se mirara.
     const { default: liqHandler } = await import('../api/_rutas/liquidacion.ts');
     const { out: outLiq, res: resLiq } = fakeRig();
-    await liqHandler(req('GET', tokenAsistente, 'liquidacion', { clienteId, periodo: '2026-11' }), resLiq as never);
+    await liqHandler(req('GET', tokenAdmin, 'liquidacion', { clienteId, periodo: '2026-11' }), resLiq as never);
     const { out: outLibro, res: resLibro } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'libro', { clienteId, periodo: '2026-11' }), resLibro as never);
+    await handler(req('GET', tokenAdmin, 'libro', { clienteId, periodo: '2026-11' }), resLibro as never);
 
     // El IGV viene anidado bajo 'igv' en la liquidación.
     const a = (outLiq.body as any)?.igv?.igvAPagar;
@@ -291,7 +291,7 @@ try {
   console.log('\n--- Período sin comprobantes ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokenAsistente, 'libro', { clienteId, periodo: '2027-01', descargar: '1' }), res as never);
+    await handler(req('GET', tokenAdmin, 'libro', { clienteId, periodo: '2027-01', descargar: '1' }), res as never);
     check('igual genera el libro', out.status === 200 && out.bin !== null);
     const wb = leerEntrada(out.bin as Buffer, 'xl/workbook.xml') ?? '';
     check('con las cinco hojas vacías', (wb.match(/<sheet /g) ?? []).length === 5);

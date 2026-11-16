@@ -5,17 +5,16 @@
  *   Lista paginada con perfil. `status` = active | suspended.
  *
  * PATCH /api/admin/users  { id, action, role? }
- *   action: 'set_role' → role = 'admin' | 'asistente' | 'user'
+ *   action: 'set_role' → role = 'admin' | 'user'
  *           'promote'  → role = 'admin'   (compatibilidad)
  *           'demote'   → role = 'user'    (compatibilidad)
  *           'suspend'  → banned = true (Better Auth y nuestros Guards lo respetan)
  *           'activate' → banned = false
  *           'delete'   → borra cuenta, sesiones y perfil
  *
- * Tres roles: 'admin' (todo, incluida esta pantalla), 'asistente' (herramientas
- * del estudio: comprobantes, libros — NO gestiona cuentas) y 'user' (cliente del
- * estudio: solo su panel). El claim `role` del JWT no autoriza nada: la fuente de
- * verdad es esta fila (ver _auth/guard.ts).
+ * Dos roles: 'admin' (todo, incluida esta pantalla) y 'user' (cliente del
+ * estudio: solo su panel). El claim `role` del JWT no autoriza nada: la fuente
+ * de verdad es esta fila (ver _auth/guard.ts).
  *
  * Protecciones: el admin no puede degradarse, suspenderse ni borrarse a sí
  * mismo (dejaría el panel sin acceso).
@@ -41,7 +40,7 @@ interface UserListRow {
 const ACTIONS = new Set(['set_role', 'promote', 'demote', 'suspend', 'activate', 'delete']);
 
 /** Roles asignables desde el panel. Cualquier otro valor se rechaza (400). */
-const ROLES = new Set(['admin', 'asistente', 'user']);
+const ROLES = new Set(['admin', 'user']);
 
 export default async function handler(req: ReqLike, res: ResLike): Promise<void> {
   applyCors(req, res, 'GET, PATCH');

@@ -1,5 +1,5 @@
 /**
- * Clientes y períodos del estudio (solo staff).
+ * Clientes y períodos del estudio (solo admin).
  *
  * GET /api/clientes
  *   Lista los contribuyentes dados de alta. Es lo primero que necesita cualquier
@@ -21,7 +21,7 @@
 import { query } from '../_db/db.js';
 import type { ReqLike, ResLike } from '../_auth/http.js';
 import { applyCors, methodNotAllowed, queryParam } from '../_auth/http.js';
-import { requireStaff } from '../_auth/guard.js';
+import { requireAdmin } from '../_auth/guard.js';
 
 type ReqConRecurso = ReqLike & { _recurso?: string };
 
@@ -36,7 +36,7 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     return;
   }
 
-  const user = await requireStaff(req, res);
+  const user = await requireAdmin(req, res);
   if (!user) return;
 
   // El router monta los dos recursos en este mismo archivo y avisa cuál se pidió

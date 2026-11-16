@@ -3,7 +3,7 @@
  *
  * No se salta el guard: se crea un usuario en neon_auth, se firma un JWT con una
  * clave de prueba y se sirve su JWKS en un servidor local. Así se verifica de
- * verdad que un asistente puede operar, que un cliente no, y que el resto del
+ * verdad que un admin puede operar, que un cliente no, y que el resto del
  * endpoint funciona.
  *
  * Crea cliente y usuario de prueba, y los borra al final.
@@ -123,9 +123,9 @@ try {
     return id;
   }
 
-  const idAsistente = await nuevoUsuario('asistente');
+  const idAdmin = await nuevoUsuario('admin');
   const idCliente = await nuevoUsuario('user');
-  const tokAsistente = await firmar(idAsistente);
+  const tokAdmin = await firmar(idAdmin);
   const tokCliente = await firmar(idCliente);
 
   // -------------------------------------------------------------------------
@@ -143,29 +143,39 @@ try {
   {
     const { out, res } = fakeRig();
     await handler(req('GET', tokCliente, { query: { periodoId: 'x' } }), res as never);
-    check('rol cliente => 403 (no es staff)', out.status === 403, String(out.status));
+    check('rol cliente => 403 (no es admin)', out.status === 403, String(out.status));
+  }
+  {
+    // Compatibilidad: el rol `asistente` se retiró. Una fila antigua con ese
+    // valor debe caer en cliente (403), no conservar acceso por la puerta de
+    // atrás de una normalización olvidada.
+    const idLegacy = await nuevoUsuario('asistente');
+    const tokLegacy = await firmar(idLegacy);
+    const { out, res } = fakeRig();
+    await handler(req('GET', tokLegacy, { query: { periodoId: 'x' } }), res as never);
+    check('rol legacy asistente => 403 (se normaliza a cliente)', out.status === 403, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokAsistente), res as never);
-    check('rol asistente => pasa el guard (400 por falta periodoId)', out.status === 400, String(out.status));
+    await handler(req('GET', tokAdmin), res as never);
+    check('rol admin => pasa el guard (400 por falta periodoId)', out.status === 400, String(out.status));
   }
 
   // -------------------------------------------------------------------------
   console.log('\n--- Validación de entrada ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, { body: {} }), res as never);
+    await handler(req('POST', tokAdmin, { body: {} }), res as never);
     check('sin clienteId => 400', out.status === 400);
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, { body: { clienteId } }), res as never);
+    await handler(req('POST', tokAdmin, { body: { clienteId } }), res as never);
     check('sin xml => 400', out.status === 400);
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, { body: { clienteId, xml: 'no soy xml', guardar: true } }), res as never);
+    await handler(req('POST', tokAdmin, { body: { clienteId, xml: 'no soy xml', guardar: true } }), res as never);
     // Desde que el endpoint acepta PDF, un texto que no es XML se intenta leer
     // como texto de PDF: entra a revisión en vez de rechazarse, y no se puede
     // guardar porque faltan datos.
@@ -173,19 +183,19 @@ try {
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, { body: { clienteId, xml: '   ' } }), res as never);
+    await handler(req('POST', tokAdmin, { body: { clienteId, xml: '   ' } }), res as never);
     check('texto vacío => 400', out.status === 400, String(out.status));
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, {
+    await handler(req('POST', tokAdmin, {
       body: { clienteId: '00000000-0000-0000-0000-000000000000', xml: XML },
     }), res as never);
     check('cliente inexistente => 404', out.status === 404);
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, { body: { clienteId, xml: 'x'.repeat(2_100_000) } }), res as never);
+    await handler(req('POST', tokAdmin, { body: { clienteId, xml: 'x'.repeat(2_100_000) } }), res as never);
     check('XML gigante => 413', out.status === 413, String(out.status));
   }
 
@@ -193,7 +203,7 @@ try {
   console.log('\n--- Lectura sin guardar ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, { body: { clienteId, xml: XML } }), res as never);
+    await handler(req('POST', tokAdmin, { body: { clienteId, xml: XML } }), res as never);
     const body = out.body as Record<string, unknown>;
     check('lectura => 200', out.status === 200, String(out.status));
     check('no guarda por defecto', body.guardado === false);
@@ -210,7 +220,7 @@ try {
   console.log('\n--- Guardar ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, { body: { clienteId, xml: XML, guardar: true, guardarAsiento: true } }), res as never);
+    await handler(req('POST', tokAdmin, { body: { clienteId, xml: XML, guardar: true, guardarAsiento: true } }), res as never);
     const body = out.body as Record<string, unknown>;
     check('guardar => 201', out.status === 201, `${out.status} ${JSON.stringify(body).slice(0, 150)}`);
     check('devuelve comprobanteId', typeof body.comprobanteId === 'string');
@@ -231,13 +241,13 @@ try {
   console.log('\n--- Duplicado ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, { body: { clienteId, xml: XML, guardar: true } }), res as never);
+    await handler(req('POST', tokAdmin, { body: { clienteId, xml: XML, guardar: true } }), res as never);
     check('re-subir => 409', out.status === 409, String(out.status));
     check('no guardó', (out.body as Record<string, unknown>).guardado === false);
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, { body: { clienteId, xml: XML } }), res as never);
+    await handler(req('POST', tokAdmin, { body: { clienteId, xml: XML } }), res as never);
     check('leer un duplicado => 200', out.status === 200);
     check('avisa del duplicado', (out.body as Record<string, unknown>).yaExiste === true);
   }
@@ -246,7 +256,7 @@ try {
   console.log('\n--- Listar y totales ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokAsistente, { query: { periodoId } }), res as never);
+    await handler(req('GET', tokAdmin, { query: { periodoId } }), res as never);
     const body = out.body as { comprobantes: unknown[]; totales: Record<string, { total: number }> };
     check('lista => 200', out.status === 200);
     check('devuelve el comprobante', body.comprobantes.length === 1, String(body.comprobantes.length));
@@ -254,7 +264,7 @@ try {
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('GET', tokAsistente, { query: { periodoId, estado: 'inventado' } }), res as never);
+    await handler(req('GET', tokAdmin, { query: { periodoId, estado: 'inventado' } }), res as never);
     check('estado inválido => 400', out.status === 400);
   }
 
@@ -262,22 +272,22 @@ try {
   console.log('\n--- Estados ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('PATCH', tokAsistente, { body: { id: compId, action: 'inventada' } }), res as never);
+    await handler(req('PATCH', tokAdmin, { body: { id: compId, action: 'inventada' } }), res as never);
     check('acción inválida => 400', out.status === 400);
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('PATCH', tokAsistente, { body: { id: compId, action: 'confirmar' } }), res as never);
+    await handler(req('PATCH', tokAdmin, { body: { id: compId, action: 'confirmar' } }), res as never);
     check('confirmar => 200', out.status === 200, String(out.status));
     const fila = await query<{ estado: string; confirmado_por: string | null }>(
       `SELECT estado, confirmado_por FROM public.comprobantes WHERE id = $1`, [compId]
     );
     check('queda confirmado', fila[0]?.estado === 'confirmado', fila[0]?.estado);
-    check('registra al asistente que confirmó', fila[0]?.confirmado_por === idAsistente);
+    check('registra al admin que confirmó', fila[0]?.confirmado_por === idAdmin);
   }
   {
     const { out, res } = fakeRig();
-    await handler(req('PATCH', tokAsistente, { body: { id: compId, action: 'descartar' } }), res as never);
+    await handler(req('PATCH', tokAdmin, { body: { id: compId, action: 'descartar' } }), res as never);
     check('no descarta uno confirmado => 409', out.status === 409, String(out.status));
   }
 
@@ -298,7 +308,7 @@ I.G.V. (18%):   S/  36.00
 IMPORTE TOTAL:  S/ 236.00
 `;
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, { body: { clienteId, xml: TEXTO_PDF } }), res as never);
+    await handler(req('POST', tokAdmin, { body: { clienteId, xml: TEXTO_PDF } }), res as never);
     check('PDF => 200', out.status === 200, `${out.status} ${JSON.stringify(out.body).slice(0, 120)}`);
     const c = (out.body as Record<string, unknown>).comprobante as Record<string, unknown>;
     check('origen pdf_texto', c.origen === 'pdf_texto', String(c.origen));
@@ -310,7 +320,7 @@ IMPORTE TOTAL:  S/ 236.00
   {
     // Un PDF escaneado (sin capa de texto) no puede guardarse: faltan datos.
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, { body: { clienteId, xml: 'texto suelto sin nada', guardar: true } }), res as never);
+    await handler(req('POST', tokAdmin, { body: { clienteId, xml: 'texto suelto sin nada', guardar: true } }), res as never);
     check('PDF ilegible => 422 al guardar', out.status === 422, String(out.status));
   }
   {
@@ -323,7 +333,7 @@ OP. GRAVADAS US$ 100.00
 I.G.V. 18%  US$ 18.00
 IMPORTE TOTAL US$ 118.00`;
     const { out, res } = fakeRig();
-    await handler(req('POST', tokAsistente, {
+    await handler(req('POST', tokAdmin, {
       body: { clienteId, xml: USD, tipoCambio: { fecha: '2026-11-01', compra: 3.4, venta: 3.5 } },
     }), res as never);
     check('PDF en USD => 200', out.status === 200, String(out.status));
@@ -336,7 +346,7 @@ IMPORTE TOTAL US$ 118.00`;
   console.log('\n--- Otros ---');
   {
     const { out, res } = fakeRig();
-    await handler(req('DELETE', tokAsistente), res as never);
+    await handler(req('DELETE', tokAdmin), res as never);
     check('DELETE => 405', out.status === 405, String(out.status));
   }
   {

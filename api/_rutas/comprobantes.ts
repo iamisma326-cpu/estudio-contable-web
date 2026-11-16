@@ -1,5 +1,5 @@
 /**
- * Comprobantes del estudio (solo staff: admin o asistente).
+ * Comprobantes del estudio (solo admin).
  *
  * POST /api/comprobantes
  *   Body: { clienteId, xml?: string, periodo?, tipoCambio?, guardarAsiento? }
@@ -25,7 +25,7 @@
 import { query, queryOne } from '../_db/db.js';
 import type { ReqLike, ResLike } from '../_auth/http.js';
 import { applyCors, methodNotAllowed, queryParam, readJsonBody } from '../_auth/http.js';
-import { requireStaff } from '../_auth/guard.js';
+import { requireAdmin } from '../_auth/guard.js';
 import {
   asegurarPeriodo,
   existeComprobante,
@@ -73,7 +73,7 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
     return;
   }
 
-  const user = await requireStaff(req, res);
+  const user = await requireAdmin(req, res);
   if (!user) return;
 
   try {

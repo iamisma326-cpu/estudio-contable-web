@@ -32,9 +32,15 @@ consume **una sola** función.
 
 ### 2.1 Roles
 
-Tres roles en `api/_auth/guard.ts`: `admin`, `asistente`, `cliente`.
-`requireStaff` = admin o asistente. El asistente ve y opera; no administra
-usuarios.
+Dos roles en `api/_auth/guard.ts`: `admin` y `user` (cliente).
+Todas las herramientas del estudio están en `/admin` y exigen `requireAdmin`:
+comprobantes, clientes y períodos, PLE, liquidación, libro y renta. El cliente
+solo ve `/panel`.
+
+Existió un rol `asistente` («opera las herramientas sin gestionar cuentas») que
+nunca tuvo pantalla propia: se retiró. Las filas antiguas con ese valor se
+normalizan a `user` al leer el rol, así que no escalan privilegios, y el alta de
+usuarios ya no lo ofrece.
 
 ### 2.2 Base de datos (`db/schema.sql`)
 
@@ -90,7 +96,7 @@ CTE atómica, doble verificación de cuadre.
 
 ### 2.9 Endpoints
 
-Todos bajo el router catch-all, con `requireStaff`:
+Todos bajo el router catch-all, con `requireAdmin`:
 
 | Ruta | Qué hace |
 |---|---|
@@ -101,7 +107,9 @@ Todos bajo el router catch-all, con `requireStaff`:
 | `GET /api/liquidacion` | IGV del mes + pago a cuenta |
 | `GET /api/libro` | Excel del mes |
 | `GET/POST /api/renta-ejercicio` | DJ 710 del año |
-| `GET /api/renta-anual` | cronograma SUNAT (otra cosa, nombre parecido) |
+
+`GET /api/renta-anual` y `GET /api/cronograma` son públicos: solo leen el
+cronograma de SUNAT y no tocan datos del estudio.
 
 ### 2.10 PLE — `api/_lib/ple.ts`
 
@@ -179,12 +187,12 @@ estilo.
 
 ## 3. Verificación real (no solo tests)
 
-Superficie de pruebas: **908 casos, 0 fallos**.
+Superficie de pruebas: **909 casos, 0 fallos**.
 
 | Suite | Casos |
 |---|---|
 | `npm run test` (lógica) | 691 |
-| `test:api` | 46 |
+| `test:api` | 47 |
 | `test:clientes` | 14 |
 | `test:ple-api` | 35 |
 | `test:liquidacion` | 27 |

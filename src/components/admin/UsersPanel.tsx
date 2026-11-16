@@ -23,13 +23,11 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 /**
- * Etiqueta del rol. Tres valores desde que existe el asistente contable:
- * admin (todo), asistente (herramientas del estudio) y usuario (cliente).
+ * Etiqueta del rol. Dos valores: admin (todo) y usuario (cliente).
  * Un valor raro en la BD se muestra tal cual en vez de mentir con "Usuario".
  */
 function roleLabel(role: string): string {
   if (role === 'admin') return 'Admin';
-  if (role === 'asistente') return 'Asistente';
   if (role === 'user') return 'Usuario';
   return role;
 }
@@ -122,7 +120,6 @@ export default function UsersPanel() {
         >
           <option value="">Todos los roles</option>
           <option value="user">Usuarios</option>
-          <option value="asistente">Asistentes</option>
           <option value="admin">Administradores</option>
         </select>
         <select
@@ -200,7 +197,6 @@ export default function UsersPanel() {
                       }}
                     >
                       <option value="user">Usuario</option>
-                      <option value="asistente">Asistente</option>
                       <option value="admin">Admin</option>
                     </select>
                     {user.banned ? (
