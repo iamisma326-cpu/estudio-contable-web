@@ -133,10 +133,14 @@ export async function encolarNoticias(
       'SELECT telefono FROM public.profiles WHERE user_id = $1 LIMIT 1',
       [opciones.admin.id]
     );
+    // EMAIL_TEST_TO permite que «Enviar solo a mí» llegue a la bandeja que
+    // se está usando en la demo, sin cambiar el correo real de la cuenta
+    // admin ni escribirle a ningún cliente.
+    const destinoPrueba = process.env.EMAIL_TEST_TO?.trim();
     destinatarios = [
       {
         user_id: opciones.admin.id,
-        email: sub?.email || opciones.admin.email,
+        email: destinoPrueba || sub?.email || opciones.admin.email,
         whatsapp: sub?.whatsapp || perfil?.telefono || null,
         baja_token: sub?.baja_token || null,
       },

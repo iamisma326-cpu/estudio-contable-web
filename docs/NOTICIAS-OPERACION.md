@@ -32,8 +32,9 @@ EMAIL_PROVIDER=gmail
 GMAIL_USER=<cuenta del estudio>
 GMAIL_APP_PASSWORD=<contraseña de aplicación de 16 caracteres>
 EMAIL_FROM="Sánchez Delgado & Asociados <cuenta@gmail.com>"
-# opcional
 APP_URL=https://estudio-contable-web-chi.vercel.app
+# opcional: destino de «Enviar solo a mí» en demos
+EMAIL_TEST_TO=iamisma326@gmail.com
 ```
 
 En **Railway** (servicio `estudio-whatsapp`):
@@ -57,7 +58,8 @@ con una cadena Postgres de Neon. Si está definida, gana sobre `WA_DB_PATH`.
 ## Envío
 
 - **Manual**: `/admin` → Noticias → «Publicar y enviar ahora». Con «Enviar
-  solo a mí» se enseña el resultado sin escribirle a un cliente.
+  solo a mí» se enseña el resultado sin escribirle a un cliente. Si existe
+  `EMAIL_TEST_TO`, ese botón usa esa dirección en vez del correo del admin.
 - **Cola**: «Encolar para el cron» deja las filas pendientes; el cron las
   procesa en la siguiente pasada.
 - **Digest**: el cron de las 12:00 UTC (07:00 Lima) detecta cambios y, si es
