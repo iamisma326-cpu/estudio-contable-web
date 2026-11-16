@@ -88,7 +88,13 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
 
   const activo = canalEmail || canalWhatsapp;
   const consentimiento = body?.consentimiento === true;
-  if (activo && !consentimiento && !actual?.consentimiento_en) {
+
+  // Consentimiento nuevo cuando: se enciende WhatsApp por primera vez, o se
+  // reactiva una cuenta que estaba dada de baja. Marcar solo email en una
+  // cuenta ya activa no obliga a repetirlo.
+  const requiereConsentimiento =
+    (canalWhatsapp && !actual?.canal_whatsapp) || (activo && !actual?.activo);
+  if (requiereConsentimiento && !consentimiento) {
     res.status(400).json({
       ok: false,
       error: 'validation',
@@ -110,8 +116,8 @@ export default async function handler(req: ReqLike, res: ResLike): Promise<void>
            canal_email       = EXCLUDED.canal_email,
            canal_whatsapp    = EXCLUDED.canal_whatsapp,
            activo            = EXCLUDED.activo,
-           consentimiento_en = COALESCE(public.suscripciones.consentimiento_en, EXCLUDED.consentimiento_en),
-           consentimiento_ip = COALESCE(public.suscripciones.consentimiento_ip, EXCLUDED.consentimiento_ip),
+           consentimiento_en = CASE WHEN $7 THEN now() ELSE public.suscripciones.consentimiento_en END,
+           consentimiento_ip = CASE WHEN $7 THEN $8 ELSE public.suscripciones.consentimiento_ip END,
            updated_at        = now()
      RETURNING user_id, email, whatsapp, canal_email, canal_whatsapp, activo,
                consentimiento_en, consentimiento_ip, created_at, updated_at`,

@@ -26,6 +26,7 @@ const { encolarNoticias } = await import('../api/_lib/noticias/cola.ts');
 const { normalizarWhatsapp, hashNormalizado, slugify } = await import(
   '../api/_lib/noticias/comun.ts'
 );
+const { normalizarTelefono } = await import('../src/lib/telefono.ts');
 const { construirEmail, construirWhatsapp } = await import(
   '../api/_lib/noticias/plantillas.ts'
 );
@@ -67,6 +68,15 @@ console.log('\nNormalización y hash');
 check('+51 987 654 321 → 51987654321', normalizarWhatsapp('+51 987 654 321') === '51987654321');
 check('987654321 → 51987654321', normalizarWhatsapp('987654321') === '51987654321');
 check('texto inválido → null', normalizarWhatsapp('no es un número') === null);
+check(
+  'frontend y backend normalizan igual (+51)',
+  normalizarTelefono('+51 987 654 321') === normalizarWhatsapp('+51 987 654 321')
+);
+check(
+  'frontend y backend normalizan igual (9 dígitos)',
+  normalizarTelefono('987654321') === normalizarWhatsapp('987654321')
+);
+check('frontend rechaza un teléfono corto', normalizarTelefono('12345') === null);
 check('slug sin tildes', slugify('Cronograma 2027: SUNAT actualizó') === 'cronograma-2027-sunat-actualizo');
 check(
   'hash estable con claves en otro orden',

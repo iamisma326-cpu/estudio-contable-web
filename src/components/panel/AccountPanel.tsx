@@ -49,7 +49,9 @@ export default function AccountPanel({ me, onSignOut, onSave }: Props) {
       setCanalEmail(sub ? sub.canal_email : true);
       setCanalWhatsapp(sub ? sub.canal_whatsapp : false);
       setWhatsapp(sub?.whatsapp ?? me.profile?.telefono ?? '');
-      setConsentimiento(Boolean(sub?.consentimiento_en));
+      // No se premarca: si va a encender WhatsApp o reactivar la cuenta,
+      // debe aceptarlo explícitamente en esta pantalla.
+      setConsentimiento(false);
     })();
     return () => {
       cancelled = true;
@@ -64,8 +66,14 @@ export default function AccountPanel({ me, onSignOut, onSave }: Props) {
       setAvisoStatus({ kind: 'error', text: 'Escribe el número de WhatsApp con prefijo o 9 dígitos.' });
       return;
     }
-    if ((canalEmail || canalWhatsapp) && !consentimiento && !suscripcion?.consentimiento_en) {
-      setAvisoStatus({ kind: 'error', text: 'Marca la casilla de consentimiento para recibir avisos.' });
+    const requiereConsentimiento =
+      (canalWhatsapp && !suscripcion?.canal_whatsapp) ||
+      ((canalEmail || canalWhatsapp) && (!suscripcion || !suscripcion.activo));
+    if (requiereConsentimiento && !consentimiento) {
+      setAvisoStatus({
+        kind: 'error',
+        text: 'Marca la casilla de consentimiento para activar los avisos.',
+      });
       return;
     }
 
@@ -74,7 +82,7 @@ export default function AccountPanel({ me, onSignOut, onSave }: Props) {
       canal_email: canalEmail,
       canal_whatsapp: canalWhatsapp,
       whatsapp: whatsapp.trim(),
-      consentimiento: consentimiento || Boolean(suscripcion?.consentimiento_en),
+      consentimiento,
     });
     setAvisoSaving(false);
 
@@ -277,7 +285,7 @@ export default function AccountPanel({ me, onSignOut, onSave }: Props) {
                 type="checkbox"
                 checked={consentimiento}
                 onChange={(e) => setConsentimiento(e.target.checked)}
-                disabled={avisoSaving || Boolean(suscripcion?.consentimiento_en)}
+                disabled={avisoSaving}
               />{' '}
               Acepto recibir avisos por los canales marcados
               {canalWhatsapp && whatsapp.trim() ? ` al número ${whatsapp.trim()}` : ''}.

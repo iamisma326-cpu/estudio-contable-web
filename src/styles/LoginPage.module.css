@@ -185,3 +185,27 @@
 .back:hover {
   color: var(--color-accent);
 }
+/* Teléfono obligatorio y consentimiento de WhatsApp en el registro */
+.hint {
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.check input {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+}

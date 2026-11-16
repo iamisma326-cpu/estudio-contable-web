@@ -94,3 +94,16 @@ npm run build
 ```
 
 La prueba de noticias usa la base de `.env` y limpia sus filas al terminar.
+
+## Registro de clientes
+
+- El teléfono es **obligatorio** al crear la cuenta. Se guarda normalizado en
+  `profiles.telefono` y en `suscripciones.whatsapp`.
+- Al registrarse se crea la suscripción con **email activo**, para que el
+  estudio pueda enviar avisos desde el primer día. Cada correo incluye el
+  enlace de baja.
+- WhatsApp queda **apagado** salvo que el cliente marque expresamente la
+  casilla de consentimiento en el registro. También puede activarlo después
+  en `/panel` → Mi cuenta.
+- Una cuenta antigua sin teléfono puede seguir entrando y actualizarlo en Mi
+  cuenta; la obligación se aplica a los perfiles nuevos.

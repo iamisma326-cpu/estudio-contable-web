@@ -16,6 +16,7 @@ import useSEO from '../hooks/useSEO';
 import { authClient } from '../lib/auth';
 import { authErrorMessage, isNetworkError } from '../lib/authError';
 import { apiSend, clearTokenCache } from '../lib/api';
+import { normalizarTelefono, telefonoValido } from '../lib/telefono';
 import styles from '../styles/LoginPage.module.css';
 
 export default function RegisterPage() {
@@ -29,6 +30,8 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [avisosWhatsapp, setAvisosWhatsapp] = useState(false);
   const [empresa, setEmpresa] = useState('');
   const [ruc, setRuc] = useState('');
   const [password, setPassword] = useState('');
@@ -46,6 +49,10 @@ export default function RegisterPage() {
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
       setError('El correo no es válido.');
+      return;
+    }
+    if (!telefonoValido(telefono)) {
+      setError('Indica un número de teléfono válido (9 dígitos en Perú o con prefijo internacional).');
       return;
     }
     if (password.length < 8) {
@@ -75,10 +82,19 @@ export default function RegisterPage() {
       }
 
       clearTokenCache();
-      await apiSend('/api/auth/profile', 'POST', {
+      const perfil = await apiSend('/api/auth/profile', 'POST', {
         empresa: empresa.trim(),
         ruc: ruc.replace(/\D/g, ''),
+        telefono: normalizarTelefono(telefono),
+        avisos_whatsapp: avisosWhatsapp,
       });
+
+      if (!perfil.ok) {
+        setError(
+          'La cuenta se creó, pero no pudimos guardar el teléfono. Inicia sesión y actualízalo en Mi cuenta.'
+        );
+        return;
+      }
 
       navigate('/panel', { replace: true });
     } catch (err) {
@@ -133,6 +149,36 @@ export default function RegisterPage() {
               className={styles.input}
               placeholder="tucorreo@empresa.pe"
             />
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.label}>Teléfono / WhatsApp</span>
+            <input
+              type="tel"
+              autoComplete="tel"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              required
+              disabled={submitting}
+              className={styles.input}
+              placeholder="+51 999 999 999"
+            />
+            <span className={styles.hint}>
+              Lo usamos para avisos tributarios y para contactarte por el estudio.
+            </span>
+          </label>
+
+          <label className={styles.check}>
+            <input
+              type="checkbox"
+              checked={avisosWhatsapp}
+              onChange={(e) => setAvisosWhatsapp(e.target.checked)}
+              disabled={submitting}
+            />
+            <span>
+              Acepto recibir también avisos por WhatsApp a este número. Puedo darme
+              de baja cuando quiera.
+            </span>
           </label>
 
           <div className={styles.twoCols}>
