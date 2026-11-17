@@ -164,7 +164,9 @@ export default function RegisterPage() {
               placeholder="+51 999 999 999"
             />
             <span className={styles.hint}>
-              Lo usamos para contactarte y, si lo aceptas, para enviarte las noticias.
+              Puedes escribir solo los 9 dígitos (934 707 514): añadimos el +51
+              automáticamente. Lo usamos para contactarte y, si lo aceptas, para enviarte las
+              noticias.
             </span>
           </label>
 
